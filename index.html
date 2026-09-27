@@ -35,7 +35,7 @@ html,body{margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);
   font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,-apple-system,sans-serif;
   font-size:var(--fs-l);line-height:1.5;-webkit-font-smoothing:antialiased}
-button{font-family:inherit;cursor:pointer}
+button{font-family:inherit;font-size:inherit;line-height:inherit;cursor:pointer}
 input,select,textarea{font-family:inherit;font-size:var(--fs-l);color:var(--ink);background:var(--surface)}
 input::placeholder,textarea::placeholder{color:var(--faint);opacity:1}
 .tnum{font-variant-numeric:tabular-nums}
@@ -210,7 +210,7 @@ input::placeholder,textarea::placeholder{color:var(--faint);opacity:1}
 .cat-items{border:1px solid var(--line);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);overflow:hidden;margin-top:-1px}
 .mi{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 14px;border-bottom:1px solid var(--line);background:var(--surface);width:100%;border-left:none;border-right:none;border-top:none;text-align:left}
 .mi:last-child{border-bottom:none}
-.mi .mn{font-weight:600}.mi .mo{color:var(--faint);font-size:var(--fs-s);margin-top:2px}
+.mi .mn{font-weight:600;display:block}.mi .mo{display:block;color:var(--muted);font-size:var(--fs-s);margin-top:2px}
 .mi .mp{font-weight:700;color:var(--primary-deep);white-space:nowrap}
 .mi .plus{color:var(--primary);font-size:var(--fs-xl);line-height:1;margin-left:2px}
 
