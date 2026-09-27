@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>病房訂餐</title>
 <style>
 :root{
@@ -40,6 +40,10 @@ input,select,textarea{font-family:inherit;font-size:var(--fs-l);color:var(--ink)
 input::placeholder,textarea::placeholder{color:var(--faint);opacity:1}
 .tnum{font-variant-numeric:tabular-nums}
 #app{max-width:600px;margin:0 auto;min-height:100vh;background:var(--bg);display:flex;flex-direction:column;padding-bottom:100px}
+/* 輸入中（鍵盤開啟）：隱藏底部固定列、頁尾多留空間，讓最後一個欄位也能捲到鍵盤上方 */
+body.kb-open .bar-bottom{display:none!important}
+body.kb-open #app{padding-bottom:60vh}
+body.kb-open .sheet-bd{padding-bottom:45vh}
 
 .hdr{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line);
   padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top))}
@@ -927,6 +931,22 @@ function askPrompt(msg,onValue,opts){opts=opts||{};const root=$('#modalRoot');co
 function copyText(str){const done=()=>toast('已複製，可貼到 LINE');
   if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(str).then(done).catch(fallback);else fallback();
   function fallback(){const ta=document.createElement('textarea');ta.value=str;ta.style.position='fixed';ta.style.opacity=0;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(e){toast('複製失敗，請長按選取');}ta.remove();}}
+
+/* 鍵盤開啟時把正在輸入的欄位捲到可視範圍（iOS 鍵盤會蓋住畫面下半部） */
+const isField=el=>!!el&&el.matches&&el.matches('input:not([type=checkbox]):not([type=radio]):not([type=date]),textarea');
+function revealField(el){if(!isField(el)||!document.body.contains(el))return;
+  const box=(el.closest('.m-row,.grp,.adm-item,.rs-card,.searchbar,.dialog')||el).getBoundingClientRect();
+  const vv=window.visualViewport,top=vv?vv.offsetTop:0,h=vv?vv.height:window.innerHeight;
+  const margin=16;let dy=0;
+  if(box.bottom>top+h-margin)dy=box.bottom-(top+h-margin);        // 被鍵盤蓋住 → 往上捲
+  if(box.top-dy<top+margin)dy=box.top-(top+margin);                // 但不要捲過頭讓上緣跑出畫面
+  if(Math.abs(dy)<4)return;
+  const sc=el.closest('.sheet-bd');
+  try{if(sc&&sc.scrollBy)sc.scrollBy({top:dy,behavior:'smooth'});else if(window.scrollBy)window.scrollBy({top:dy,behavior:'smooth'});}catch(e){}}
+document.addEventListener('focusin',e=>{if(!isField(e.target))return;document.body.classList.add('kb-open');
+  const el=e.target;[80,350,700].forEach(t=>setTimeout(()=>{if(document.activeElement===el)revealField(el);},t));});
+document.addEventListener('focusout',()=>setTimeout(()=>{if(!isField(document.activeElement))document.body.classList.remove('kb-open');},120));
+if(window.visualViewport)window.visualViewport.addEventListener('resize',()=>{if(isField(document.activeElement))revealField(document.activeElement);});
 
 /* 登入畫面 */
 function showLogin(msg){hideBottom();document.querySelectorAll('.overlay').forEach(x=>x.remove());setSyncUI('','');
