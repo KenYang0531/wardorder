@@ -318,7 +318,7 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 /* ============================================================ 狀態 + 雲端同步 ============================================================ */
 const uid=()=>'u'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const state={roster:[],restaurants:[],orders:[],
-  screen:'home',editingId:null,ui:{peopleQuery:'',summaryView:'store',openCats:{}}};
+  screen:'home',editingId:null,ui:{peopleQuery:'',restQuery:'',summaryView:'store',openCats:{}}};
 
 /* --- Google 登入（Supabase Auth implicit flow，不用外部套件） ---
    瀏覽器只存登入 session（token），不存任何名單/餐廳/訂單資料 */
@@ -654,17 +654,28 @@ function openRoster(onClose){
 /* ---------- 步驟3 選餐廳 ---------- */
 function renderRestaurant(w){const o=getEditing(),t=mealTime(o.meal);
   const favCount=r=>o.participants.filter(p=>p.favorites&&p.favorites.includes(r.id)).length;
-  const open=state.restaurants.filter(r=>isOpenAt(r,t));const closed=state.restaurants.length-open.length;
+  const open=state.restaurants.filter(r=>isOpenAt(r,t));const closedList=state.restaurants.filter(r=>!isOpenAt(r,t));
   open.sort((a,b)=>favCount(b)-favCount(a));
-  w.innerHTML=`<div class="h1">選擇餐廳</div><p class="sub">${mealLabel(o.meal)}（${t}）· 依今日訂餐同仁喜好排序${closed?` · 已隱藏 ${closed} 家未營業`:''}</p>
-    ${open.map(r=>{const fc=favCount(r);const mo=r.minOrder.type==='amount'?`滿 ${fmt(r.minOrder.value)}`:`${r.minOrder.value} ${r.minOrder.unit}以上`;
+  const norm=x=>(x||'').toLowerCase().replace(/[\s（）()・·\-]/g,'');
+  const hit=(r,q)=>!q||norm(r.name).includes(q)||norm(r.address).includes(q)||norm(r.phone).includes(q);
+  const card=r=>{const fc=favCount(r);const mo=r.minOrder.type==='amount'?`滿 ${fmt(r.minOrder.value)}`:`${r.minOrder.value} ${r.minOrder.unit}以上`;
       return `<button class="r-card" data-r="${r.id}">${fc?`<span class="favpill">♥ ${fc} 位喜愛</span>`:''}
         <div class="rn">${esc(r.name)}<span class="r-open">營業中</span></div>
         <div class="meta">營業 ${r.open}–${r.close}${r.hoursNote?` <span style="color:var(--warn)">・${esc(r.hoursNote)}</span>`:''}<br>
-        外送門檻 <b>${mo}</b> · 電話 ${esc(r.phone)}</div></button>`;}).join('')||`<div class="empty">此時段沒有營業中的餐廳</div>`}`;
-  w.querySelectorAll('.r-card').forEach(el=>el.onclick=()=>{const rid=el.dataset.r;
-    if(o.restaurantId&&o.restaurantId!==rid&&hasItems(o)){askConfirm('換成其他餐廳會清除目前所有點餐內容，確定嗎？',()=>{clearOrderItems(o);o.restaurantId=rid;save();goStep('order');});return;}
-    o.restaurantId=rid;save();goStep('order');});
+        外送門檻 <b>${mo}</b> · 電話 ${esc(r.phone)}</div></button>`;};
+  w.innerHTML=`<div class="h1">選擇餐廳</div><p class="sub">${mealLabel(o.meal)}（${t}）· 依今日訂餐同仁喜好排序${closedList.length?` · 已隱藏 ${closedList.length} 家未營業`:''}</p>
+    <div class="searchbar"><input id="rq" type="search" placeholder="搜尋餐廳名稱、地址或電話…" value="${esc(state.ui.restQuery||'')}" autocomplete="off" enterkeyhint="search"></div>
+    <div id="rlist"></div>`;
+  // 只重畫清單、不重畫輸入框（避免游標跳掉）
+  const drawList=()=>{const q=norm(state.ui.restQuery);const list=open.filter(r=>hit(r,q));
+    const hiddenHits=q?closedList.filter(r=>hit(r,q)):[];
+    $('#rlist').innerHTML=list.map(card).join('')||`<div class="empty">${q?`找不到符合「${esc(state.ui.restQuery.trim())}」的營業中餐廳`:'此時段沒有營業中的餐廳'}</div>`;
+    if(hiddenHits.length)$('#rlist').insertAdjacentHTML('beforeend',`<p class="sub" style="text-align:center">另有 ${hiddenHits.length} 家符合但此時段未營業：${hiddenHits.map(r=>esc(r.name)).join('、')}</p>`);
+    $('#rlist').querySelectorAll('.r-card').forEach(el=>el.onclick=()=>{const rid=el.dataset.r;state.ui.restQuery='';
+      if(o.restaurantId&&o.restaurantId!==rid&&hasItems(o)){askConfirm('換成其他餐廳會清除目前所有點餐內容，確定嗎？',()=>{clearOrderItems(o);o.restaurantId=rid;save();goStep('order');});return;}
+      o.restaurantId=rid;save();goStep('order');});};
+  $('#rq').oninput=e=>{state.ui.restQuery=e.target.value;drawList();};
+  drawList();
 }
 
 /* ---------- 步驟4 點餐 ---------- */
@@ -900,7 +911,7 @@ function bottomBar(cfg){bottomCfg=cfg;let bar=document.querySelector('.bar-botto
   bar.innerHTML=`${cfg.l1||cfg.l2?`<div class="info"><div class="l1">${esc(cfg.l1||'')}</div><div class="l2 tnum">${esc(cfg.l2||'')}</div></div>`:''}
     ${cfg.btn2?`<button class="btn ghost" id="bbtn2">${esc(cfg.btn2)}</button>`:''}
     <button class="btn" id="bbtn" ${cfg.disabled?'disabled':''}>${esc(cfg.btn)}</button>`;
-  $('#bbtn').onclick=cfg.onClick;if(cfg.btn2)$('#bbtn2').onclick=cfg.onClick2;bar.classList.toggle('no-info',!(cfg.l1||cfg.l2));bar.style.display='flex';}
+  $('#bbtn').onclick=cfg.onClick;if(cfg.btn2)$('#bbtn2').onclick=cfg.onClick2;bar.classList.toggle('no-info',!(cfg.l1||cfg.l2));bar.style.display='flex';if(typeof kbCheck==='function')setTimeout(kbCheck,0);}
 function updateBottom(){if(!bottomCfg)return;const o=getEditing();if(!o)return;
   if(o.step==='people'){bottomCfg.l2=o.participants.length+' 人';bottomCfg.disabled=o.participants.length===0;
     const bar=document.querySelector('.bar-bottom');if(bar){bar.querySelector('.l2').textContent=bottomCfg.l2;bar.querySelector('#bbtn').disabled=bottomCfg.disabled;}}}
@@ -945,8 +956,12 @@ function revealField(el){if(!isField(el)||!document.body.contains(el))return;
   try{if(sc&&sc.scrollBy)sc.scrollBy({top:dy,behavior:'smooth'});else if(window.scrollBy)window.scrollBy({top:dy,behavior:'smooth'});}catch(e){}}
 document.addEventListener('focusin',e=>{if(!isField(e.target))return;document.body.classList.add('kb-open');
   const el=e.target;[80,350,700].forEach(t=>setTimeout(()=>{if(document.activeElement===el)revealField(el);},t));});
-document.addEventListener('focusout',()=>setTimeout(()=>{if(!isField(document.activeElement))document.body.classList.remove('kb-open');},120));
-if(window.visualViewport)window.visualViewport.addEventListener('resize',()=>{if(isField(document.activeElement))revealField(document.activeElement);});
+// 注意：輸入框若被重繪移除（例如勾「已結清」會重畫收款頁），瀏覽器不會觸發 focusout，
+// 所以另外在重繪、點擊、視窗變化時都檢查一次，避免底部列（封存鈕）一直被藏住
+function kbCheck(){if(!isField(document.activeElement))document.body.classList.remove('kb-open');}
+document.addEventListener('focusout',()=>setTimeout(kbCheck,120));
+document.addEventListener('click',()=>setTimeout(kbCheck,0),true);
+if(window.visualViewport)window.visualViewport.addEventListener('resize',()=>{if(isField(document.activeElement))revealField(document.activeElement);else kbCheck();});
 
 /* 登入畫面 */
 function showLogin(msg){hideBottom();document.querySelectorAll('.overlay').forEach(x=>x.remove());setSyncUI('','');
