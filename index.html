@@ -17,24 +17,27 @@
   --danger:#d5544e;
   --shadow:0 1px 2px rgba(16,39,46,.06), 0 6px 20px rgba(16,39,46,.06);
   --radius:14px; --radius-sm:10px;
+  --on-primary:#ffffff;
+  color-scheme:light;
 }
 :root:not([data-theme="light"]){ @media (prefers-color-scheme: dark){
   --bg:#0e1719; --surface:#152227; --surface-2:#1a2a30; --ink:#e7eef0; --muted:#9db0b7; --faint:#6f858d;
   --line:#243740; --line-strong:#2f4650; --primary:#2bc0b0; --primary-deep:#1f9488; --primary-soft:#123833;
   --warn:#e79657; --warn-soft:#3a2a19; --good:#4bbd7a; --good-soft:#16321f;
-  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.3); } }
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.3); --on-primary:#062521; color-scheme:dark; } }
 :root[data-theme="dark"]{
   --bg:#0e1719; --surface:#152227; --surface-2:#1a2a30; --ink:#e7eef0; --muted:#9db0b7; --faint:#6f858d;
   --line:#243740; --line-strong:#2f4650; --primary:#2bc0b0; --primary-deep:#1f9488; --primary-soft:#123833;
   --warn:#e79657; --warn-soft:#3a2a19; --good:#4bbd7a; --good-soft:#16321f;
-  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.3); }
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.3); --on-primary:#062521; color-scheme:dark; }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);
   font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,-apple-system,sans-serif;
   font-size:var(--fs-l);line-height:1.5;-webkit-font-smoothing:antialiased}
 button{font-family:inherit;cursor:pointer}
-input,select,textarea{font-family:inherit;font-size:var(--fs-l);color:var(--ink)}
+input,select,textarea{font-family:inherit;font-size:var(--fs-l);color:var(--ink);background:var(--surface)}
+input::placeholder,textarea::placeholder{color:var(--faint);opacity:1}
 .tnum{font-variant-numeric:tabular-nums}
 #app{max-width:600px;margin:0 auto;min-height:100vh;background:var(--bg);display:flex;flex-direction:column;padding-bottom:100px}
 
@@ -50,7 +53,7 @@ input,select,textarea{font-family:inherit;font-size:var(--fs-l);color:var(--ink)
 .step{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:5px 4px;color:var(--faint);font-size:var(--fs-s);font-weight:600;white-space:nowrap;background:none;border:none}
 .step .n{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--line);color:var(--muted);font-size:var(--fs-s);font-weight:700}
 .step.done{color:var(--primary-deep)} .step.done .n{background:var(--primary-soft);color:var(--primary-deep)}
-.step.active{color:var(--ink)} .step.active .n{background:var(--primary);color:#fff}
+.step.active{color:var(--ink)} .step.active .n{background:var(--primary);color:var(--on-primary)}
 .step.clickable{cursor:pointer} .step .sep{color:var(--line-strong)}
 
 .wrap{padding:16px}
@@ -63,15 +66,16 @@ input,select,textarea{font-family:inherit;font-size:var(--fs-l);color:var(--ink)
 .link{background:none;border:none;color:var(--primary-deep);font-weight:700;font-size:var(--fs-m);padding:10px 0}
 
 /* Home order cards */
-.bigbtn{width:100%;border:none;border-radius:var(--radius);padding:16px;font-size:var(--fs-l);font-weight:800;background:var(--primary);color:#fff;margin-bottom:18px;box-shadow:var(--shadow)}
+.bigbtn{width:100%;border:none;border-radius:var(--radius);padding:16px;font-size:var(--fs-l);font-weight:800;background:var(--primary);color:var(--on-primary);margin-bottom:18px;box-shadow:var(--shadow)}
 .o-card{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 15px;margin-bottom:11px;box-shadow:var(--shadow)}
 .o-t{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.o-meal{font-weight:800;font-size:var(--fs-l)}
+.o-meal{font-weight:800;font-size:var(--fs-l);display:flex;gap:10px;align-items:baseline}
 .o-stage{font-size:var(--fs-s);font-weight:800;padding:3px 10px;border-radius:20px;white-space:nowrap}
 .stage-order{background:var(--primary-soft);color:var(--primary-deep)}
 .stage-pay{background:var(--warn-soft);color:var(--warn)}
 .stage-ready{background:var(--good-soft);color:var(--good)}
-.o-meta{color:var(--muted);font-size:var(--fs-s);margin-top:6px;line-height:1.6}
+.o-meta{color:var(--muted);font-size:var(--fs-m);margin-top:6px;line-height:1.6}
+.o-meta .o-rest{color:var(--ink);font-size:var(--fs-l);font-weight:700}
 .o-meta b{color:var(--ink)}
 .o-foot{display:flex;justify-content:space-between;align-items:center;margin-top:11px;gap:8px}
 .o-del{border:none;background:none;color:var(--faint);font-size:var(--fs-l)}
@@ -79,7 +83,8 @@ input,select,textarea{font-family:inherit;font-size:var(--fs-l);color:var(--ink)
 /* Meal picker */
 .field{margin-bottom:16px}
 .field label{display:block;font-size:var(--fs-s);font-weight:700;color:var(--muted);margin-bottom:7px}
-.field input[type=date]{width:100%;padding:13px 14px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface)}
+.field input[type=date]{display:block;width:100%;max-width:100%;min-width:0;min-height:50px;padding:0 14px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface);-webkit-appearance:none;appearance:none;text-align:left;line-height:50px}
+.field input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0}
 .meal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .meal{background:var(--surface);border:2px solid var(--line);border-radius:var(--radius);padding:20px 16px;text-align:left}
 .meal .emo{font-size:var(--fs-xl)}.meal .t{font-size:var(--fs-l);font-weight:800;margin-top:6px}.meal .tm{color:var(--muted);font-size:var(--fs-s);margin-top:2px}
@@ -90,7 +95,7 @@ input,select,textarea{font-family:inherit;font-size:var(--fs-l);color:var(--ink)
 .searchbar input{flex:1;padding:12px 14px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface)}
 .p-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line)}
 .p-row:last-child{border-bottom:none}
-.chk{width:24px;height:24px;border-radius:7px;border:2px solid var(--line-strong);flex:0 0 auto;display:grid;place-items:center;background:var(--surface);color:#fff;font-size:var(--fs-m)}
+.chk{width:24px;height:24px;border-radius:7px;border:2px solid var(--line-strong);flex:0 0 auto;display:grid;place-items:center;background:var(--surface);color:var(--on-primary);font-size:var(--fs-m)}
 .p-row.on .chk{background:var(--primary);border-color:var(--primary)}
 .p-name{font-weight:600;flex:1}
 .p-row.on .p-name{color:var(--primary-deep)}
@@ -122,7 +127,9 @@ input,select,textarea{font-family:inherit;font-size:var(--fs-l);color:var(--ink)
 .meter.met .status{color:var(--good)}.meter:not(.met) .status{color:var(--warn)}
 .person-block{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;box-shadow:var(--shadow)}
 .person-block.no-order{opacity:.72}
-.person-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;gap:8px}
+.person-head{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;gap:8px;background:var(--surface-2);border-bottom:1px solid var(--line)}
+.person-block.no-order .person-head{border-bottom:none}
+.pav{width:30px;height:30px;border-radius:50%;background:var(--primary);color:var(--on-primary);display:inline-flex;align-items:center;justify-content:center;font-size:var(--fs-m);font-weight:800;flex:0 0 auto}
 .person-head .pn{font-weight:800;font-size:var(--fs-l);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .ph-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto}
 .ph-btn{border:1px solid var(--line-strong);background:var(--surface);color:var(--muted);border-radius:8px;padding:6px 10px;font-size:var(--fs-s);font-weight:700}
@@ -130,8 +137,11 @@ input,select,textarea{font-family:inherit;font-size:var(--fs-l);color:var(--ink)
 .ph-btn.on{background:var(--warn-soft);color:var(--warn);border-color:var(--warn)}
 .ph-x{border:none;background:none;color:var(--faint);font-size:var(--fs-l);padding:2px 4px}
 .ps{color:var(--muted);font-size:var(--fs-s);font-weight:700}
-.li{display:flex;gap:10px;padding:11px 14px;border-top:1px solid var(--line)}
-.li .li-main{flex:1;min-width:0}.li .li-name{font-weight:600}
+.li{display:flex;gap:10px;padding:10px 14px 10px 51px;border-top:1px solid var(--line)}
+.person-head+.li{border-top:none}
+.li .li-main{flex:1;min-width:0}.li .li-name{font-weight:500}
+.li .li-price{color:var(--muted)}
+.no-items{padding:10px 14px 10px 51px;color:var(--faint);font-size:var(--fs-m)}
 .li .li-opt{color:var(--muted);font-size:var(--fs-s);margin-top:2px;line-height:1.5}
 .li .li-note{color:var(--warn);font-size:var(--fs-s);margin-top:2px}
 .li .li-price{font-weight:700;white-space:nowrap}
@@ -175,23 +185,23 @@ input,select,textarea{font-family:inherit;font-size:var(--fs-l);color:var(--ink)
 .bar-bottom .info{flex:1;min-width:0}
 .bar-bottom .info .l1{font-size:var(--fs-s);color:var(--muted);font-weight:700}
 .bar-bottom .info .l2{font-size:var(--fs-l);font-weight:800}
-.btn{border:none;border-radius:var(--radius-sm);padding:14px 20px;font-size:var(--fs-l);font-weight:800;background:var(--primary);color:#fff;white-space:nowrap}
+.btn{border:none;border-radius:var(--radius-sm);padding:14px 20px;font-size:var(--fs-l);font-weight:800;background:var(--primary);color:var(--on-primary);white-space:nowrap}
 .btn:disabled{background:var(--line-strong);color:var(--surface)}
 .btn.ghost{background:var(--surface);color:var(--primary-deep);border:1px solid var(--primary);padding:14px 16px}
 .sbtn{border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);border-radius:9px;padding:9px 14px;font-weight:700;font-size:var(--fs-m)}
-.sbtn.pri{background:var(--primary);border-color:var(--primary);color:#fff}
+.sbtn.pri{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
 .sbtn.danger{color:var(--danger);border-color:var(--danger)}
 
 /* Overlay / sheet */
 .overlay{position:fixed;inset:0;z-index:50;background:rgba(16,39,46,.45);display:flex;align-items:flex-end;justify-content:center;animation:fade .15s}
 @keyframes fade{from{opacity:0}to{opacity:1}}
-.sheet{background:var(--bg);width:100%;max-width:600px;max-height:92vh;border-radius:20px 20px 0 0;display:flex;flex-direction:column;animation:up .2s cubic-bezier(.2,.8,.2,1)}
+.sheet{background:var(--bg);width:100%;max-width:600px;max-height:92vh;max-height:92dvh;overflow:hidden;border-radius:20px 20px 0 0;display:flex;flex-direction:column;animation:up .2s cubic-bezier(.2,.8,.2,1)}
 @keyframes up{from{transform:translateY(30px)}to{transform:translateY(0)}}
-.sheet-hd{position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--line);border-radius:20px 20px 0 0;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sheet-hd{flex:0 0 auto;position:relative;z-index:2;background:var(--surface);border-bottom:1px solid var(--line);border-radius:20px 20px 0 0;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .sheet-hd .t{font-weight:800;font-size:var(--fs-l)}
 .sheet-hd .x{border:none;background:var(--surface-2);color:var(--muted);width:34px;height:34px;border-radius:50%;font-size:var(--fs-xl);line-height:1}
-.sheet-bd{overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch}
-.sheet-ft{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:13px 16px;padding-bottom:calc(13px + env(safe-area-inset-bottom));display:flex;gap:12px;align-items:center}
+.sheet-bd{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:16px;-webkit-overflow-scrolling:touch}
+.sheet-ft{flex:0 0 auto;position:relative;z-index:2;background:var(--surface);border-top:1px solid var(--line);padding:13px 16px;padding-bottom:calc(13px + env(safe-area-inset-bottom));display:flex;gap:12px;align-items:center}
 
 /* menu browser */
 .cat{margin-bottom:8px}
@@ -234,6 +244,16 @@ input,select,textarea{font-family:inherit;font-size:var(--fs-l);color:var(--ink)
 .fi-row{display:flex;gap:8px}
 .lbl2{font-size:var(--fs-s);font-weight:800;color:var(--muted);margin:14px 0 6px}
 .mini-del{border:none;background:none;color:var(--danger);font-size:var(--fs-l);padding:0 3px}
+.rs-card{padding:11px 12px;margin-bottom:9px}
+.rs-top{display:flex;align-items:center;gap:12px}
+.rs-name{width:7.5em;flex:0 0 auto;border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;font-weight:600}
+.rs-no{display:flex;align-items:center;gap:7px;font-weight:700;font-size:var(--fs-m);color:var(--muted);cursor:pointer;user-select:none}
+.rs-no .chk{width:22px;height:22px}
+.rs-no.on{color:var(--warn)}.rs-no.on .chk{background:var(--warn);border-color:var(--warn)}
+.rs-top .mini-del{margin-left:auto}
+.rs-favs{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:9px}
+.fav-chip{border:1px solid var(--primary);background:var(--primary-soft);color:var(--primary-deep);border-radius:16px;padding:4px 10px;font-size:var(--fs-m);font-weight:700}
+.fav-add{border:1px dashed var(--line-strong);border-radius:16px;padding:4px 10px;font-size:var(--fs-m);color:var(--muted);max-width:100%}
 .adm-cat{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:11px;margin-bottom:12px}
 .adm-item{display:flex;gap:6px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
 .adm-item .ni{flex:1;padding:8px 9px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface)}
@@ -247,8 +267,8 @@ input,select,textarea{font-family:inherit;font-size:var(--fs-l);color:var(--ink)
 .dlg-input{width:100%;padding:11px 13px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);margin-bottom:16px}
 .dlg-btns{display:flex;gap:10px}
 .dlg-b{flex:1;padding:12px;border-radius:10px;font-weight:800;font-size:var(--fs-m);border:1px solid var(--line-strong);background:var(--surface);color:var(--ink)}
-.dlg-b.ok{background:var(--primary);border-color:var(--primary);color:#fff}
-.dlg-b.ok.danger{background:var(--danger);border-color:var(--danger)}
+.dlg-b.ok{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.dlg-b.ok.danger{background:var(--danger);border-color:var(--danger);color:#fff}
 #toast{position:fixed;left:50%;bottom:112px;transform:translateX(-50%);z-index:80;background:var(--ink);color:var(--bg);padding:11px 20px;border-radius:22px;font-weight:700;font-size:var(--fs-m);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;box-shadow:var(--shadow)}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
 #sync{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:90;padding:5px 12px;border-radius:14px;font-size:var(--fs-s);font-weight:700;background:var(--surface-2);color:var(--muted);border:1px solid var(--line);box-shadow:var(--shadow);display:none}
@@ -413,6 +433,9 @@ const timeToMin=h=>{const[a,b]=h.split(':').map(Number);return a*60+b;};
 function isOpenAt(r,h){const t=timeToMin(h),o=timeToMin(r.open),c=timeToMin(r.close);return c>o?(t>=o&&t<=c):(t>=o||t<=c);}
 const mealTime=m=>m==='lunch'?'12:00':'19:00';
 const mealLabel=m=>m==='lunch'?'中餐':'晚餐';
+const dateText=o=>(o.date||'').replace(/-/g,'/');
+const orderTitle=o=>dateText(o)+'　'+(o.meal?mealLabel(o.meal):'未選餐別');
+const orderTitleHTML=o=>`<span class="tnum">${dateText(o)}</span><span>${o.meal?mealLabel(o.meal):'未選餐別'}</span>`;
 
 function priceOf(item,sel){let unit=item.p||0,add=0;
   (item.groups||[]).forEach(g=>{if(g.type==='single'){const ci=sel.single[g.id];if(ci!=null&&g.choices[ci])unit+=g.choices[ci].p;}
@@ -467,7 +490,7 @@ function headerHTML(){
     const sep=i<STEPS.length-1?'<span class="sep step">›</span>':'';
     return `<button class="${cls.join(' ')}" data-go="${reached?s[0]:''}">${inner}</button>${sep}`;}).join('');
   return `<div class="hdr"><div class="hdr-top">
-    <button class="brand" id="bHome"><span class="dot"></span>病房訂餐 <small>${o.meal?mealLabel(o.meal)+' · '+o.date.slice(5):'新訂單'}</small></button>
+    <button class="brand" id="bHome"><span class="dot"></span>病房訂餐 <small class="tnum">${o.meal?esc(orderTitle(o)):'新訂單'}</small></button>
     <button class="hdr-menu" id="bHome2">← 訂單列表</button></div>
     <div class="steps">${steps}</div></div>`;
 }
@@ -491,9 +514,9 @@ function renderHomeList(w){
     ${active.length?active.map(o=>{
       const st=stageOf(o),r=findRest(o.restaurantId),ps=payers(o),settled=ps.filter(p=>o.pay[p.id]&&o.pay[p.id].settled).length;
       return `<div class="o-card">
-        <div class="o-t"><span class="o-meal">${o.meal?mealLabel(o.meal):'未選餐別'} · ${o.date.slice(5)}</span><span class="o-stage ${st.cls}">${st.t}</span></div>
-        <div class="o-meta">${r?esc(r.name):'尚未選餐廳'}　·　${activeParts(o).length} 人訂餐<br>
-          合計 <b class="tnum">${fmt(grandTotal(o))}</b>${ps.length?`　·　已結清 ${settled}/${ps.length}`:''}</div>
+        <div class="o-t"><span class="o-meal">${orderTitleHTML(o)}</span><span class="o-stage ${st.cls}">${st.t}</span></div>
+        <div class="o-meta"><div class="o-rest">${r?esc(r.name):'尚未選餐廳'}</div>
+          ${activeParts(o).length} 人訂餐　·　合計 <b class="tnum">${fmt(grandTotal(o))}</b>${ps.length?`　·　已結清 ${settled}/${ps.length}`:''}</div>
         <div class="o-foot"><button class="o-del" data-del="${o.id}">刪除</button>
           <button class="sbtn pri" data-open="${o.id}">開啟</button></div>
       </div>`;}).join(''):`<div class="empty">目前沒有進行中的訂單<br>按上方「新增訂單」開始</div>`}
@@ -511,9 +534,9 @@ function renderArchived(w){
   const arr=state.orders.filter(o=>o.status==='archived').sort((a,b)=>(b.archivedAt||0)-(a.archivedAt||0));
   w.innerHTML=`<div class="h1">已封存訂單</div><p class="sub">已完成收款並封存的訂單，點開可檢視。</p>
     ${arr.length?arr.map(o=>{const r=findRest(o.restaurantId);
-      return `<div class="o-card"><div class="o-t"><span class="o-meal">${mealLabel(o.meal)} · ${o.date.slice(5)}</span>
+      return `<div class="o-card"><div class="o-t"><span class="o-meal">${orderTitleHTML(o)}</span>
         <span class="o-stage stage-ready">已封存</span></div>
-        <div class="o-meta">${r?esc(r.name):''}　·　${activeParts(o).length} 人　·　合計 <b class="tnum">${fmt(grandTotal(o))}</b></div>
+        <div class="o-meta"><div class="o-rest">${r?esc(r.name):''}</div>${activeParts(o).length} 人　·　合計 <b class="tnum">${fmt(grandTotal(o))}</b></div>
         <div class="o-foot"><button class="o-del" data-unarch="${o.id}">↩ 還原為進行中</button>
           <button class="sbtn" data-view="${o.id}">檢視</button></div></div>`;}).join(''):`<div class="empty">還沒有封存的訂單</div>`}
     <button class="link" id="back">← 回訂單列表</button>`;
@@ -521,7 +544,7 @@ function renderArchived(w){
   w.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>viewArchived(state.orders.find(o=>o.id===b.getAttribute('data-view'))));
   w.querySelectorAll('[data-unarch]').forEach(b=>b.onclick=()=>{const o=state.orders.find(x=>x.id===b.getAttribute('data-unarch'));o.status='active';delete o.archivedAt;save();render();toast('已還原');});
 }
-function viewArchived(o){const{body}=sheet('訂單明細 · '+mealLabel(o.meal)+' '+o.date,null);
+function viewArchived(o){const{body}=sheet('訂單明細 · '+orderTitle(o),null);
   const r=findRest(o.restaurantId);
   body.innerHTML=`<div class="list" style="margin-bottom:14px"><div class="store-head"><div class="rn">${r?esc(r.name):''}</div>
     ${r?`<div class="ph tnum">電話 ${esc(r.phone)}</div>`:''}</div>
@@ -573,19 +596,24 @@ function clearOrderItems(o){o.items={};o.pay={};}
 /* ---------- 名單管理 ---------- */
 function openRoster(onClose){
   const{body,close}=sheet('管理單位名單',onClose);
-  const draw=()=>{body.innerHTML=state.roster.map(p=>`<div class="card" style="padding:13px 14px;margin-bottom:10px">
-    <div style="display:flex;align-items:center;gap:10px">
-      <input value="${esc(p.name)}" data-rn="${p.id}" style="flex:1;border:1px solid var(--line-strong);border-radius:8px;padding:9px 11px;font-weight:600">
-      <button class="mini-del" data-del="${p.id}">✕</button></div>
-    <label class="settle" style="margin-top:11px;cursor:pointer"><span class="chk" data-bo="${p.id}" style="${p.bringOwn?'background:var(--warn);border-color:var(--warn)':''}">${p.bringOwn?'✓':''}</span>自帶便當、不訂餐</label>
-    <div class="lbl2">喜愛餐廳（可多選）</div><div class="opts">${state.restaurants.map(r=>`<button class="opt-b ${p.favorites.includes(r.id)?'on':''}" data-fav="${p.id}|${r.id}">${esc(r.name)}</button>`).join('')||'<span class="grp-sub">尚無餐廳，請先到餐廳後台建立</span>'}</div></div>`).join('')+
+  const draw=()=>{const rname=id=>{const r=findRest(id);return r?r.name:null;};
+    body.innerHTML=state.roster.map(p=>{const favs=p.favorites.filter(id=>rname(id));const rest=state.restaurants.filter(r=>!p.favorites.includes(r.id));
+      return `<div class="card rs-card">
+      <div class="rs-top"><input class="rs-name" value="${esc(p.name)}" data-rn="${p.id}">
+        <label class="rs-no ${p.bringOwn?'on':''}" data-bo="${p.id}"><span class="chk">${p.bringOwn?'✓':''}</span>不訂餐</label>
+        <button class="mini-del" data-del="${p.id}" aria-label="移除">✕</button></div>
+      <div class="rs-favs">${favs.map(id=>`<button class="fav-chip" data-favrm="${p.id}|${id}">♥ ${esc(rname(id))} ✕</button>`).join('')}
+        ${rest.length?`<select class="fav-add" data-favadd="${p.id}"><option value="">＋ 喜愛餐廳</option>${rest.map(r=>`<option value="${r.id}">${esc(r.name)}</option>`).join('')}</select>`:''}
+        ${state.restaurants.length?'':'<span class="grp-sub" style="margin:0">尚無餐廳，請先到餐廳後台建立</span>'}</div></div>`;}).join('')+
     `<button class="sbtn pri" id="addP" style="width:100%;padding:13px">＋ 新增同仁至母名單</button>`;
+    const syncFav=p=>state.orders.forEach(o=>{const op=o.participants.find(x=>x.id===p.id);if(op)op.favorites=[...p.favorites];});
+    body.querySelectorAll('[data-favadd]').forEach(sel=>sel.onchange=()=>{if(!sel.value)return;const p=state.roster.find(x=>x.id===sel.getAttribute('data-favadd'));
+      if(!p.favorites.includes(sel.value))p.favorites.push(sel.value);syncFav(p);save();draw();});
+    body.querySelectorAll('[data-favrm]').forEach(el=>el.onclick=()=>{const[pid,rid]=el.getAttribute('data-favrm').split('|');const p=state.roster.find(x=>x.id===pid);
+      p.favorites=p.favorites.filter(x=>x!==rid);syncFav(p);save();draw();});
     body.querySelectorAll('[data-rn]').forEach(inp=>inp.onchange=e=>{const p=state.roster.find(x=>x.id===inp.dataset.rn);p.name=e.target.value.trim()||p.name;
       state.orders.forEach(o=>{const op=o.participants.find(x=>x.id===p.id);if(op)op.name=p.name;});save();});
     body.querySelectorAll('[data-bo]').forEach(el=>el.onclick=()=>{const p=state.roster.find(x=>x.id===el.getAttribute('data-bo'));p.bringOwn=!p.bringOwn;save();draw();});
-    body.querySelectorAll('[data-fav]').forEach(el=>el.onclick=()=>{const[pid,rid]=el.getAttribute('data-fav').split('|');const p=state.roster.find(x=>x.id===pid);
-      p.favorites.includes(rid)?p.favorites=p.favorites.filter(x=>x!==rid):p.favorites.push(rid);
-      state.orders.forEach(o=>{const op=o.participants.find(x=>x.id===pid);if(op)op.favorites=[...p.favorites];});save();draw();});
     body.querySelectorAll('[data-del]').forEach(el=>el.onclick=()=>{const id=el.getAttribute('data-del');askConfirm('從母名單移除這位同仁？',()=>{state.roster=state.roster.filter(x=>x.id!==id);save();draw();});});
     $('#addP').onclick=()=>askPrompt('新同仁姓名：',(n)=>{state.roster.push({id:uid(),name:n,bringOwn:false,favorites:[]});save();draw();},{placeholder:'輸入姓名'});
   };draw();
@@ -601,7 +629,7 @@ function renderRestaurant(w){const o=getEditing(),t=mealTime(o.meal);
       return `<button class="r-card" data-r="${r.id}">${fc?`<span class="favpill">♥ ${fc} 位喜愛</span>`:''}
         <div class="rn">${esc(r.name)}<span class="r-open">營業中</span></div>
         <div class="meta">營業 ${r.open}–${r.close}${r.hoursNote?` <span style="color:var(--warn)">・${esc(r.hoursNote)}</span>`:''}<br>
-        外送門檻 <b>${mo}</b> · 電話 ${esc(r.phone)}<br>${r.menu.reduce((s,c)=>s+c.items.length,0)} 項餐點</div></button>`;}).join('')||`<div class="empty">此時段沒有營業中的餐廳</div>`}`;
+        外送門檻 <b>${mo}</b> · 電話 ${esc(r.phone)}</div></button>`;}).join('')||`<div class="empty">此時段沒有營業中的餐廳</div>`}`;
   w.querySelectorAll('.r-card').forEach(el=>el.onclick=()=>{const rid=el.dataset.r;
     if(o.restaurantId&&o.restaurantId!==rid&&hasItems(o)){askConfirm('換成其他餐廳會清除目前所有點餐內容，確定嗎？',()=>{clearOrderItems(o);o.restaurantId=rid;save();goStep('order');});return;}
     o.restaurantId=rid;save();goStep('order');});
@@ -616,12 +644,12 @@ function renderOrder(w){const o=getEditing(),r=findRest(o.restaurantId),ms=minSt
     <button class="addpeople" id="addPpl">＋ 新增 / 管理訂餐同仁（目前 ${o.participants.length} 人）</button>
     ${o.participants.map(p=>{const items=o.items[p.id]||[],st=subtotal(p.id,o),roster=state.roster.find(x=>x.id===p.id);
       return `<div class="person-block ${p.noOrder?'no-order':''}">
-        <div class="person-head"><div class="pn">${esc(p.name)}
+        <div class="person-head"><div class="pn"><span class="pav">${esc((p.name||'').trim().slice(0,1))}</span>${esc(p.name)}
           ${roster&&roster.bringOwn?'<span class="tag bento">自帶</span>':''}${p.adhoc?'<span class="tag ad">臨時</span>':''}${p.noOrder?'<span class="tag no">不訂餐</span>':''}</div>
           <div class="ph-actions">
             <button class="ph-btn ${p.noOrder?'on':''}" data-no="${p.id}">${p.noOrder?'改為訂餐':'不訂餐'}</button>
             <button class="ph-x" data-rm="${p.id}">✕</button></div></div>
-        ${p.noOrder?'':`<div style="padding:0 14px 2px;text-align:right" class="ps tnum">${items.length?fmt(st):'尚未點餐'}</div>
+        ${p.noOrder?'':`${items.length?'':'<div class="no-items">尚未點餐</div>'}
         ${items.map(l=>`<div class="li"><div class="li-main"><div class="li-name">${esc(l.name)}${l.qty>1?' ×'+l.qty:''}</div>
           ${l.opt?`<div class="li-opt">${esc(l.opt)}</div>`:''}${l.note?`<div class="li-note">備註 ${esc(l.note)}</div>`:''}</div>
           <div class="li-price tnum">${fmt(l.total)}</div><button class="li-del" data-del="${p.id}|${l.uid}">✕</button></div>`).join('')}
@@ -714,9 +742,9 @@ function renderSummary(w){const o=getEditing(),r=findRest(o.restaurantId),view=s
   $('#copy').onclick=()=>copyText(view==='store'?storeText(o):personText(o));
   bottomBar({l1:'合計 · '+orderedCount(o)+' 人',l2:fmt(grandTotal(o)),btn:'下一步：收款',onClick:()=>goStep('money')});
 }
-function storeText(o){const r=findRest(o.restaurantId),ms=minStatus(o);let s=`【${r.name} 外送訂單】\n電話 ${r.phone}\n餐別：${mealLabel(o.meal)}（${o.date}）\n—\n`;
+function storeText(o){const r=findRest(o.restaurantId),ms=minStatus(o);let s=`【${r.name} 外送訂單】\n電話 ${r.phone}\n日期：${orderTitle(o)}\n—\n`;
   aggregate(o).forEach(a=>s+=`${a.qty}× ${a.name}${a.opt||''}${a.note?'（'+a.note+'）':''}\n`);s+=`—\n合計 ${fmt(grandTotal(o))}（外送門檻 ${ms.curText}/${ms.goalText}）`;return s;}
-function personText(o){let s=`【分菜清單 · ${mealLabel(o.meal)} ${o.date}】\n`;activeParts(o).forEach(p=>{const arr=o.items[p.id]||[];if(!arr.length)return;
+function personText(o){let s=`【分菜清單 · ${orderTitle(o)}】\n`;activeParts(o).forEach(p=>{const arr=o.items[p.id]||[];if(!arr.length)return;
   s+=`\n${p.name}（${fmt(subtotal(p.id,o))}）\n`;arr.forEach(l=>s+=`　${l.qty}× ${l.name}${l.opt||''}${l.note?'（'+l.note+'）':''}\n`);});s+=`\n總計 ${fmt(grandTotal(o))}`;return s;}
 
 /* ---------- 步驟6 收款 ---------- */
