@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>病房訂餐</title>
+<style>
+:root{
+  --bg:#eef2f4; --surface:#ffffff; --surface-2:#f6f9fa;
+  --ink:#16272e; --muted:#5f757e; --faint:#8fa3ab;
+  --line:#e0e8ec; --line-strong:#cdd9de;
+  --primary:#0f9b8e; --primary-deep:#0b6f66; --primary-soft:#dff1ee;
+  --warn:#e0803a; --warn-soft:#fbeadd;
+  --good:#2f9e5f; --good-soft:#e2f3e8;
+  --danger:#d5544e;
+  --shadow:0 1px 2px rgba(16,39,46,.06), 0 6px 20px rgba(16,39,46,.06);
+  --radius:14px; --radius-sm:10px;
+}
+:root:not([data-theme="light"]){ @media (prefers-color-scheme: dark){
+  --bg:#0e1719; --surface:#152227; --surface-2:#1a2a30; --ink:#e7eef0; --muted:#9db0b7; --faint:#6f858d;
+  --line:#243740; --line-strong:#2f4650; --primary:#2bc0b0; --primary-deep:#1f9488; --primary-soft:#123833;
+  --warn:#e79657; --warn-soft:#3a2a19; --good:#4bbd7a; --good-soft:#16321f;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.3); } }
+:root[data-theme="dark"]{
+  --bg:#0e1719; --surface:#152227; --surface-2:#1a2a30; --ink:#e7eef0; --muted:#9db0b7; --faint:#6f858d;
+  --line:#243740; --line-strong:#2f4650; --primary:#2bc0b0; --primary-deep:#1f9488; --primary-soft:#123833;
+  --warn:#e79657; --warn-soft:#3a2a19; --good:#4bbd7a; --good-soft:#16321f;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.3); }
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);
+  font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,-apple-system,sans-serif;
+  font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink)}
+.tnum{font-variant-numeric:tabular-nums}
+#app{max-width:600px;margin:0 auto;min-height:100vh;background:var(--bg);display:flex;flex-direction:column;padding-bottom:100px}
+
+.hdr{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line);
+  padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top))}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.brand{display:flex;align-items:center;gap:9px;font-weight:800;letter-spacing:.5px;background:none;border:none;color:var(--ink);font-size:16px}
+.brand .dot{width:11px;height:11px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 4px var(--primary-soft)}
+.brand small{font-weight:600;color:var(--muted);letter-spacing:0}
+.hdr-menu{border:1px solid var(--line-strong);background:var(--surface);color:var(--muted);border-radius:9px;padding:6px 11px;font-size:13px;font-weight:600}
+.steps{display:flex;gap:2px;margin-top:11px;overflow-x:auto;scrollbar-width:none}
+.steps::-webkit-scrollbar{display:none}
+.step{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:5px 4px;color:var(--faint);font-size:12.5px;font-weight:600;white-space:nowrap;background:none;border:none}
+.step .n{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--line);color:var(--muted);font-size:11px;font-weight:700}
+.step.done{color:var(--primary-deep)} .step.done .n{background:var(--primary-soft);color:var(--primary-deep)}
+.step.active{color:var(--ink)} .step.active .n{background:var(--primary);color:#fff}
+.step.clickable{cursor:pointer} .step .sep{color:var(--line-strong)}
+
+.wrap{padding:16px}
+.h1{font-size:22px;font-weight:800;margin:2px 0 3px}
+.sub{color:var(--muted);font-size:14px;margin:0 0 16px}
+.section-label{font-size:12.5px;font-weight:700;color:var(--muted);margin:20px 2px 8px;display:flex;justify-content:space-between;align-items:center}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.empty{text-align:center;color:var(--muted);padding:36px 20px}.empty .e{font-size:34px}
+.link{background:none;border:none;color:var(--primary-deep);font-weight:700;font-size:14px;padding:10px 0}
+
+/* Home order cards */
+.bigbtn{width:100%;border:none;border-radius:var(--radius);padding:16px;font-size:17px;font-weight:800;background:var(--primary);color:#fff;margin-bottom:18px;box-shadow:var(--shadow)}
+.o-card{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 15px;margin-bottom:11px;box-shadow:var(--shadow)}
+.o-t{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.o-meal{font-weight:800;font-size:16px}
+.o-stage{font-size:12px;font-weight:800;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.stage-order{background:var(--primary-soft);color:var(--primary-deep)}
+.stage-pay{background:var(--warn-soft);color:var(--warn)}
+.stage-ready{background:var(--good-soft);color:var(--good)}
+.o-meta{color:var(--muted);font-size:13px;margin-top:6px;line-height:1.6}
+.o-meta b{color:var(--ink)}
+.o-foot{display:flex;justify-content:space-between;align-items:center;margin-top:11px;gap:8px}
+.o-del{border:none;background:none;color:var(--faint);font-size:16px}
+
+/* Meal picker */
+.field{margin-bottom:16px}
+.field label{display:block;font-size:13px;font-weight:700;color:var(--muted);margin-bottom:7px}
+.field input[type=date]{width:100%;padding:13px 14px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface)}
+.meal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.meal{background:var(--surface);border:2px solid var(--line);border-radius:var(--radius);padding:20px 16px;text-align:left}
+.meal .emo{font-size:30px}.meal .t{font-size:18px;font-weight:800;margin-top:6px}.meal .tm{color:var(--muted);font-size:13px;margin-top:2px}
+.meal.sel{border-color:var(--primary);background:var(--primary-soft)}
+
+/* People */
+.searchbar{display:flex;gap:8px;margin-bottom:12px}
+.searchbar input{flex:1;padding:12px 14px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface)}
+.p-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.p-row:last-child{border-bottom:none}
+.chk{width:24px;height:24px;border-radius:7px;border:2px solid var(--line-strong);flex:0 0 auto;display:grid;place-items:center;background:var(--surface);color:#fff;font-size:15px}
+.p-row.on .chk{background:var(--primary);border-color:var(--primary)}
+.p-name{font-weight:600;flex:1}
+.p-row.on .p-name{color:var(--primary-deep)}
+.tag{font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.tag.bento{background:var(--warn-soft);color:var(--warn)}
+.tag.fav{background:var(--primary-soft);color:var(--primary-deep)}
+.tag.ad{background:var(--line);color:var(--muted)}
+.tag.no{background:var(--line);color:var(--muted)}
+
+/* Restaurant cards */
+.r-card{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:15px 16px;margin-bottom:12px;box-shadow:var(--shadow);position:relative}
+.r-card .rn{font-size:18px;font-weight:800}
+.r-card .meta{color:var(--muted);font-size:13.5px;margin-top:5px;line-height:1.7}
+.r-card .meta b{color:var(--ink);font-weight:700}
+.favpill{position:absolute;top:14px;right:14px;background:var(--primary-soft);color:var(--primary-deep);font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px}
+.r-open{display:inline-block;font-size:11.5px;font-weight:700;color:var(--good);background:var(--good-soft);padding:2px 8px;border-radius:6px;margin-left:6px}
+
+/* Order screen */
+.mini-r{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px}
+.mini-r .rn{font-weight:800}.mini-r .ph{color:var(--muted);font-size:13px}
+.chg{border:1px solid var(--line-strong);background:var(--surface);color:var(--primary-deep);border-radius:8px;padding:6px 10px;font-size:12.5px;font-weight:700}
+.meter{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:13px 15px;margin-bottom:14px;box-shadow:var(--shadow)}
+.meter .top{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;font-weight:700}
+.meter .top .muted{color:var(--muted);font-weight:600}
+.bar{height:9px;border-radius:6px;background:var(--line);margin-top:9px;overflow:hidden}
+.bar span{display:block;height:100%;background:var(--warn);border-radius:6px;transition:width .25s}
+.meter.met .bar span{background:var(--good)}
+.meter .status{font-size:12.5px;font-weight:700;margin-top:8px}
+.meter.met .status{color:var(--good)}.meter:not(.met) .status{color:var(--warn)}
+.person-block{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;box-shadow:var(--shadow)}
+.person-block.no-order{opacity:.72}
+.person-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;gap:8px}
+.person-head .pn{font-weight:800;font-size:16px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.ph-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.ph-btn{border:1px solid var(--line-strong);background:var(--surface);color:var(--muted);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700}
+.ph-btn.warn{color:var(--warn)}
+.ph-btn.on{background:var(--warn-soft);color:var(--warn);border-color:var(--warn)}
+.ph-x{border:none;background:none;color:var(--faint);font-size:17px;padding:2px 4px}
+.ps{color:var(--muted);font-size:13px;font-weight:700}
+.li{display:flex;gap:10px;padding:11px 14px;border-top:1px solid var(--line)}
+.li .li-main{flex:1;min-width:0}.li .li-name{font-weight:600}
+.li .li-opt{color:var(--muted);font-size:12.5px;margin-top:2px;line-height:1.5}
+.li .li-note{color:var(--warn);font-size:12.5px;margin-top:2px}
+.li .li-price{font-weight:700;white-space:nowrap}
+.li .li-del{color:var(--faint);border:none;background:none;font-size:17px;padding:0 2px;align-self:flex-start}
+.addbtn{width:100%;border:none;border-top:1px dashed var(--line-strong);background:var(--surface-2);color:var(--primary-deep);font-weight:700;padding:12px;font-size:14px}
+.addpeople{width:100%;border:1px dashed var(--line-strong);background:var(--surface);color:var(--primary-deep);font-weight:700;padding:13px;font-size:14px;border-radius:var(--radius);margin-bottom:14px}
+
+/* Summary */
+.seg{display:flex;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:4px;margin-bottom:16px}
+.seg button{flex:1;border:none;background:none;padding:9px;border-radius:8px;font-weight:700;font-size:14px;color:var(--muted)}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.store-head{padding:15px;border-bottom:1px solid var(--line)}
+.store-head .rn{font-size:18px;font-weight:800}.store-head .ph{color:var(--primary-deep);font-weight:700;margin-top:3px}
+.agg{display:flex;justify-content:space-between;gap:10px;padding:11px 15px;border-bottom:1px solid var(--line)}
+.agg:last-child{border-bottom:none}
+.agg .qty{color:var(--primary-deep);font-weight:800;flex:0 0 auto}
+.agg .an{flex:1}.agg .an .opt{color:var(--muted);font-size:12.5px}
+.grand{display:flex;justify-content:space-between;align-items:center;padding:14px 15px;border-top:2px solid var(--line-strong);font-weight:800;font-size:17px}
+.copybtn{width:100%;margin-top:12px;border:1px solid var(--primary);color:var(--primary-deep);background:var(--surface);border-radius:var(--radius-sm);padding:13px;font-weight:800;font-size:15px}
+
+/* Money compact */
+.summary-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:13px;text-align:center;box-shadow:var(--shadow)}
+.stat .k{font-size:12px;color:var(--muted);font-weight:700}.stat .v{font-size:20px;font-weight:800;margin-top:3px}
+.m-row{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;box-shadow:var(--shadow)}
+.m-row.settled{border-color:var(--good);background:var(--good-soft)}
+.m-hd{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+.m-hd .pn{font-weight:800;font-size:16px}
+.settle-mini{display:flex;align-items:center;gap:7px;font-weight:700;font-size:13px;color:var(--muted)}
+.settle-mini .chk{width:22px;height:22px}
+.m-row.settled .settle-mini{color:var(--good)}.m-row.settled .settle-mini .chk{background:var(--good);border-color:var(--good)}
+.m-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.m-cell .k{font-size:11.5px;color:var(--muted);font-weight:700;margin-bottom:5px;text-align:right}
+.m-cell .v{font-weight:800;font-size:18px;height:44px;display:flex;align-items:center;justify-content:flex-end;padding:0 2px}
+.m-cell input{width:100%;height:44px;padding:0 10px;border:1px solid var(--line-strong);border-radius:9px;background:var(--surface);text-align:right;font-weight:800;font-size:18px}
+.m-cell .v.pos{color:var(--warn)}.m-cell .v.zero{color:var(--good)}.m-cell .v.neg{color:var(--danger)}
+
+/* Bottom bar */
+.bar-bottom{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);
+  padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:10px;max-width:600px;margin:0 auto}
+.bar-bottom .info{flex:1;min-width:0}
+.bar-bottom .info .l1{font-size:12.5px;color:var(--muted);font-weight:700}
+.bar-bottom .info .l2{font-size:17px;font-weight:800}
+.btn{border:none;border-radius:var(--radius-sm);padding:14px 20px;font-size:16px;font-weight:800;background:var(--primary);color:#fff;white-space:nowrap}
+.btn:disabled{background:var(--line-strong);color:var(--surface)}
+.btn.ghost{background:var(--surface);color:var(--primary-deep);border:1px solid var(--primary);padding:14px 16px}
+.sbtn{border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);border-radius:9px;padding:9px 14px;font-weight:700;font-size:14px}
+.sbtn.pri{background:var(--primary);border-color:var(--primary);color:#fff}
+.sbtn.danger{color:var(--danger);border-color:var(--danger)}
+
+/* Overlay / sheet */
+.overlay{position:fixed;inset:0;z-index:50;background:rgba(16,39,46,.45);display:flex;align-items:flex-end;justify-content:center;animation:fade .15s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet{background:var(--bg);width:100%;max-width:600px;max-height:92vh;border-radius:20px 20px 0 0;display:flex;flex-direction:column;animation:up .2s cubic-bezier(.2,.8,.2,1)}
+@keyframes up{from{transform:translateY(30px)}to{transform:translateY(0)}}
+.sheet-hd{position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--line);border-radius:20px 20px 0 0;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sheet-hd .t{font-weight:800;font-size:17px}
+.sheet-hd .x{border:none;background:var(--surface-2);color:var(--muted);width:34px;height:34px;border-radius:50%;font-size:20px;line-height:1}
+.sheet-bd{overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch}
+.sheet-ft{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:13px 16px;padding-bottom:calc(13px + env(safe-area-inset-bottom));display:flex;gap:12px;align-items:center}
+
+/* menu browser */
+.cat{margin-bottom:8px}
+.cat-h{width:100%;display:flex;justify-content:space-between;align-items:center;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px 14px;font-weight:800;color:var(--ink)}
+.cat-h .cnt{color:var(--faint);font-weight:700;font-size:13px}
+.cat-items{border:1px solid var(--line);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);overflow:hidden;margin-top:-1px}
+.mi{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 14px;border-bottom:1px solid var(--line);background:var(--surface);width:100%;border-left:none;border-right:none;border-top:none;text-align:left}
+.mi:last-child{border-bottom:none}
+.mi .mn{font-weight:600}.mi .mo{color:var(--faint);font-size:12px;margin-top:2px}
+.mi .mp{font-weight:700;color:var(--primary-deep);white-space:nowrap}
+.mi .plus{color:var(--primary);font-size:22px;line-height:1;margin-left:2px}
+
+/* item modal */
+.grp{margin-bottom:20px}
+.grp-t{font-weight:800;font-size:15px;margin-bottom:3px}
+.grp-t .req{color:var(--danger);font-size:12px;margin-left:6px;font-weight:700}
+.grp-sub{color:var(--muted);font-size:12.5px;margin-bottom:10px}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt-b{border:1.5px solid var(--line-strong);background:var(--surface);border-radius:10px;padding:9px 14px;font-weight:600;font-size:14px;color:var(--ink)}
+.opt-b.on{border-color:var(--primary);background:var(--primary-soft);color:var(--primary-deep)}
+.opt-b .d{color:var(--muted);font-weight:600;font-size:12.5px;margin-left:3px}
+.opt-b.on .d{color:var(--primary-deep)}
+.addcat{font-size:12px;font-weight:800;color:var(--faint);margin:14px 0 8px}
+.add-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.add-row .anm{font-weight:600;flex:1}.add-row .apr{color:var(--muted);font-size:13px;width:52px;text-align:right}
+.stepper{display:flex;align-items:center;border:1px solid var(--line-strong);border-radius:9px;overflow:hidden}
+.stepper button{border:none;background:var(--surface-2);width:34px;height:34px;font-size:19px;color:var(--ink);line-height:1}
+.stepper button:disabled{color:var(--faint)}
+.stepper .q{min-width:34px;text-align:center;font-weight:800}
+.qty-big .stepper button{width:44px;height:44px;font-size:22px}
+.note-in{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 13px;background:var(--surface);resize:vertical;min-height:46px}
+
+/* settle checkbox reuse */
+.settle{display:flex;align-items:center;gap:9px;font-weight:700;font-size:14px}
+
+/* admin */
+.adm-r{display:flex;align-items:center;gap:10px;padding:13px 0;border-bottom:1px solid var(--line)}
+.adm-r .an{flex:1;font-weight:700}.adm-r .ac{color:var(--muted);font-size:13px}
+.fi{width:100%;padding:10px 12px;border:1px solid var(--line-strong);border-radius:9px;background:var(--surface);margin-bottom:8px}
+.fi-row{display:flex;gap:8px}
+.lbl2{font-size:12px;font-weight:800;color:var(--muted);margin:14px 0 6px}
+.mini-del{border:none;background:none;color:var(--danger);font-size:17px;padding:0 3px}
+.adm-cat{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:11px;margin-bottom:12px}
+.adm-item{display:flex;gap:6px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
+.adm-item .ni{flex:1;padding:8px 9px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface)}
+.adm-item .pi{width:66px;padding:8px 9px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);text-align:right}
+.chip{border:1px solid var(--line-strong);background:var(--surface);border-radius:8px;padding:6px 9px;font-size:12px;font-weight:700;color:var(--muted)}
+.chip.on{background:var(--primary-soft);color:var(--primary-deep);border-color:var(--primary)}
+
+.dialog-ov{align-items:center;padding:24px}
+.dialog{background:var(--surface);border-radius:16px;max-width:340px;width:100%;padding:20px;box-shadow:var(--shadow);animation:up .18s cubic-bezier(.2,.8,.2,1)}
+.dlg-msg{font-size:15px;font-weight:600;line-height:1.65;margin-bottom:16px;white-space:pre-line}
+.dlg-input{width:100%;padding:11px 13px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);margin-bottom:16px}
+.dlg-btns{display:flex;gap:10px}
+.dlg-b{flex:1;padding:12px;border-radius:10px;font-weight:800;font-size:15px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink)}
+.dlg-b.ok{background:var(--primary);border-color:var(--primary);color:#fff}
+.dlg-b.ok.danger{background:var(--danger);border-color:var(--danger)}
+#toast{position:fixed;left:50%;bottom:112px;transform:translateX(-50%);z-index:80;background:var(--ink);color:var(--bg);padding:11px 20px;border-radius:22px;font-weight:700;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;box-shadow:var(--shadow)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
+#sync{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:90;padding:5px 12px;border-radius:14px;font-size:12px;font-weight:700;background:var(--surface-2);color:var(--muted);border:1px solid var(--line);box-shadow:var(--shadow);display:none}
+#sync.saving{display:block}
+#sync.error{display:block;background:var(--warn-soft);color:var(--warn);border-color:var(--warn)}
+.boot{min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--muted);text-align:center;padding:24px}
+.boot .err{color:var(--danger);font-size:13px;word-break:break-all;max-width:320px}
+.login-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:28px 22px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:14px;align-items:stretch}
+.login-card .t{font-size:22px;font-weight:800;color:var(--ink)}
+.login-card .s{font-size:13.5px;color:var(--muted)}
+.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);border-radius:var(--radius-sm);padding:13px 16px;font-weight:800;font-size:15px}
+.gbtn .g{width:20px;height:20px;border-radius:50%;border:2px solid var(--primary);display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:var(--primary-deep)}
+.acct{margin-top:18px;padding-top:12px;border-top:1px solid var(--line);color:var(--faint);font-size:12.5px;display:flex;align-items:center;justify-content:space-between;gap:8px;word-break:break-all}
+.acct .link{padding:4px 0;font-size:13px}
+@media(min-width:600px){#app{border-left:1px solid var(--line);border-right:1px solid var(--line)}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modalRoot"></div>
+<div id="toast"></div>
+<div id="sync"></div>
+
+<script>
+"use strict";
+/* ============================================================ Supabase 設定 ============================================================
+   名單、餐廳、訂單全部存在 Supabase（ward-order 專案），本檔不含任何資料。
+   需 Google 登入；RLS 只允許 public.allowed_users 名單內的 email 讀寫（名單只在資料庫，不在本檔）。 */
+const SB_URL='https://stxextvimtstwsugvjbu.supabase.co';
+const SB_KEY='sb_publishable_ucAjtgYdRpUZKB4j1JID7Q_62l7Z1uY';
+const clone=o=>JSON.parse(JSON.stringify(o));
+
+/* ============================================================ 狀態 + 雲端同步 ============================================================ */
+const uid=()=>'u'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const state={roster:[],restaurants:[],orders:[],
+  screen:'home',editingId:null,ui:{peopleQuery:'',summaryView:'store',openCats:{}}};
+
+/* --- Google 登入（Supabase Auth implicit flow，不用外部套件） ---
+   瀏覽器只存登入 session（token），不存任何名單/餐廳/訂單資料 */
+const AUTH_KEY='wardorder_auth';
+const auth={session:null,refreshing:null};
+class AuthError extends Error{constructor(m){super(m);this.auth=true;}}
+function storeSession(v){auth.session=v;try{v?localStorage.setItem(AUTH_KEY,JSON.stringify(v)):localStorage.removeItem(AUTH_KEY);}catch(e){}}
+function loadSession(){try{return JSON.parse(localStorage.getItem(AUTH_KEY));}catch(e){return null;}}
+const appURL=()=>location.origin+location.pathname;
+const googleURL=()=>SB_URL+'/auth/v1/authorize?provider=google&redirect_to='+encodeURIComponent(appURL());
+function readAuthRedirect(){
+  const h=new URLSearchParams(location.hash.replace(/^#/,'')),qs=new URLSearchParams(location.search);
+  const clean=()=>{try{history.replaceState(null,'',appURL());}catch(e){}};
+  if(h.get('access_token')){const now=Math.floor(Date.now()/1000);
+    const v={access_token:h.get('access_token'),refresh_token:h.get('refresh_token'),expires_at:+h.get('expires_at')||now+(+h.get('expires_in')||3600)};
+    clean();return{session:v};}
+  const err=h.get('error_description')||qs.get('error_description')||h.get('error')||qs.get('error');
+  if(err){clean();return{error:err};}
+  return{};}
+async function authFetch(path,opt){opt=opt||{};
+  const res=await fetch(SB_URL+'/auth/v1/'+path,{method:opt.method||'GET',body:opt.body,
+    headers:Object.assign({apikey:SB_KEY,'Content-Type':'application/json'},opt.token?{Authorization:'Bearer '+opt.token}:{})});
+  const txt=await res.text();let data=null;try{data=txt?JSON.parse(txt):null;}catch(e){}
+  if(res.status===401||res.status===403||(res.status===400&&/token/.test(path)))throw new AuthError((data&&(data.msg||data.error_description||data.message))||'登入已失效');
+  if(!res.ok)throw new Error('HTTP '+res.status+' '+txt.slice(0,160));
+  return data;}
+function refreshSession(){
+  if(auth.refreshing)return auth.refreshing;
+  const rt=auth.session&&auth.session.refresh_token;if(!rt)return Promise.reject(new AuthError('尚未登入'));
+  auth.refreshing=authFetch('token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:rt})})
+    .then(d=>{storeSession({access_token:d.access_token,refresh_token:d.refresh_token,
+      expires_at:d.expires_at||Math.floor(Date.now()/1000)+(d.expires_in||3600),email:(d.user&&d.user.email)||(auth.session&&auth.session.email)});})
+    .finally(()=>{auth.refreshing=null;});
+  return auth.refreshing;}
+async function accessToken(){if(!auth.session)throw new AuthError('尚未登入');
+  if((auth.session.expires_at||0)*1000-Date.now()<60000)await refreshSession();
+  return auth.session.access_token;}
+async function signOut(msg){const t=auth.session&&auth.session.access_token;
+  sync.ready=false;clearTimeout(sync.timer);storeSession(null);
+  if(t){try{await authFetch('logout',{method:'POST',token:t});}catch(e){}}
+  showLogin(msg);}
+
+/* --- REST（PostgREST），帶登入者 JWT；401 會先換新 token 再試一次 --- */
+async function sbFetch(path,opt,retried){opt=opt||{};
+  const token=await accessToken();
+  const res=await fetch(SB_URL+'/rest/v1/'+path,{method:opt.method||'GET',body:opt.body,
+    headers:Object.assign({apikey:SB_KEY,Authorization:'Bearer '+token,'Content-Type':'application/json'},opt.headers||{})});
+  const txt=await res.text();
+  if(res.status===401){if(!retried){await refreshSession();return sbFetch(path,opt,true);}throw new AuthError('登入已失效');}
+  if(!res.ok)throw new Error('HTTP '+res.status+' '+txt.slice(0,160));
+  return txt?JSON.parse(txt):null;}
+
+/* --- 前端物件 <-> 資料表列 --- */
+const toISO=ms=>ms?new Date(ms).toISOString():null;
+const toMs=iso=>iso?Date.parse(iso):undefined;
+const todayISO=()=>{const t=new Date();return new Date(t.getTime()-t.getTimezoneOffset()*60000).toISOString().slice(0,10);};
+const TABLES={
+  staff:{list:()=>state.roster,
+    toRow:(p,i)=>({id:p.id,name:p.name,bring_own:!!p.bringOwn,favorites:p.favorites||[],sort:i+1}),
+    fromRow:r=>({id:r.id,name:r.name,bringOwn:!!r.bring_own,favorites:r.favorites||[]})},
+  restaurants:{list:()=>state.restaurants,
+    toRow:(r,i)=>({id:r.id,name:r.name,phone:r.phone||'',address:r.address||'',open_time:r.open,close_time:r.close,
+      hours_note:r.hoursNote||null,min_order:r.minOrder,note:r.note||'',menu:r.menu,sort:i+1}),
+    fromRow:r=>{const o={id:r.id,name:r.name,phone:r.phone||'',address:r.address||'',open:r.open_time,close:r.close_time,
+      minOrder:r.min_order||{type:'amount',value:0},note:r.note||'',menu:r.menu||[]};if(r.hours_note)o.hoursNote=r.hours_note;return o;}},
+  orders:{list:()=>state.orders,
+    toRow:o=>({id:o.id,status:o.status,archived_at:toISO(o.archivedAt),meal:o.meal||null,order_date:o.date||todayISO(),
+      restaurant_id:o.restaurantId||null,step:o.step,reached:o.reached||[],participants:o.participants||[],items:o.items||{},pay:o.pay||{},
+      created_at:toISO(o.createdAt)||new Date().toISOString()}),
+    fromRow:r=>{const o={id:r.id,status:r.status,createdAt:toMs(r.created_at),step:r.step||'meal',meal:r.meal||null,date:r.order_date,
+      restaurantId:r.restaurant_id||null,participants:r.participants||[],items:r.items||{},pay:r.pay||{},reached:r.reached||['meal']};
+      if(r.archived_at)o.archivedAt=toMs(r.archived_at);return o;}}
+};
+
+/* --- 差異同步：save() 不直接寫，而是排程 flush；flush 只送出有變動的列 --- */
+const synced={staff:new Map(),restaurants:new Map(),orders:new Map()};  // id -> 上次成功寫入的 JSON
+const sync={timer:null,busy:false,again:false,failing:false,ready:false};
+function rowsOf(t){return TABLES[t].list().map((x,i)=>TABLES[t].toRow(x,i));}
+function snapshotAll(){for(const t in TABLES){synced[t]=new Map(rowsOf(t).map(r=>[r.id,JSON.stringify(r)]));}}
+function pendingDiff(){const out={};let n=0;
+  for(const t in TABLES){const rows=rowsOf(t),ids=new Set(rows.map(r=>r.id));
+    const up=rows.filter(r=>synced[t].get(r.id)!==JSON.stringify(r));
+    const del=[...synced[t].keys()].filter(id=>!ids.has(id));
+    out[t]={up,del};n+=up.length+del.length;}
+  out.count=n;return out;}
+function setSyncUI(mode,text){const el=document.getElementById('sync');if(!el)return;el.className=mode||'';el.textContent=text||'';}
+function save(){if(!sync.ready)return;clearTimeout(sync.timer);sync.timer=setTimeout(flush,350);}
+async function flush(){
+  if(sync.busy){sync.again=true;return;}
+  const d=pendingDiff();if(!d.count){if(!sync.failing)setSyncUI('','');return;}
+  sync.busy=true;setSyncUI('saving','儲存中…');
+  try{
+    for(const t of ['restaurants','staff','orders']){const{up,del}=d[t];
+      if(up.length){await sbFetch(t+'?on_conflict=id',{method:'POST',body:JSON.stringify(up),headers:{Prefer:'resolution=merge-duplicates,return=minimal'}});
+        up.forEach(r=>synced[t].set(r.id,JSON.stringify(r)));}
+      if(del.length){await sbFetch(t+'?id=in.('+del.map(id=>'"'+String(id).replace(/"/g,'')+'"').join(',')+')',{method:'DELETE',headers:{Prefer:'return=minimal'}});
+        del.forEach(id=>synced[t].delete(id));}}
+    sync.failing=false;setSyncUI('','');
+  }catch(e){console.error('[sync]',e);
+    if(e.auth){sync.busy=false;signOut('登入已失效，請重新登入（最後幾筆變更可能未儲存）');return;}
+    if(!sync.failing)toast('雲端儲存失敗，稍後自動重試');
+    sync.failing=true;setSyncUI('error','未儲存 · 重試中');
+    clearTimeout(sync.timer);sync.timer=setTimeout(flush,5000);
+  }finally{sync.busy=false;if(sync.again){sync.again=false;save();}}
+}
+window.addEventListener('beforeunload',e=>{if(sync.ready&&(sync.busy||pendingDiff().count)){e.preventDefault();e.returnValue='';}});
+
+async function loadAll(){
+  const[s,r,o]=await Promise.all([sbFetch('staff?select=*&order=sort.asc,created_at.asc'),
+    sbFetch('restaurants?select=*&order=sort.asc,created_at.asc'),sbFetch('orders?select=*&order=created_at.desc')]);
+  state.roster=s.map(TABLES.staff.fromRow);state.restaurants=r.map(TABLES.restaurants.fromRow);state.orders=o.map(TABLES.orders.fromRow);
+}
+function reindexAll(){state.restaurants.forEach(r=>{r._index={};r.menu.forEach((c,ci)=>c.items.forEach((it,ii)=>{if(!it.id)it.id=r.id+'_'+ci+'_'+ii;r._index[it.id]=it;}));});}
+const findRest=id=>state.restaurants.find(r=>r.id===id);
+
+function newOrder(){
+  return{id:uid(),status:'active',createdAt:Date.now(),step:'meal',meal:null,date:todayISO(),restaurantId:null,participants:[],items:{},pay:{},reached:['meal']};}
+const getEditing=()=>state.orders.find(o=>o.id===state.editingId);
+
+/* ============================================================ 小工具 ============================================================ */
+const $=s=>document.querySelector(s);
+const esc=s=>(s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=n=>'$'+Math.round(n).toLocaleString('en-US');
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1600);}
+const timeToMin=h=>{const[a,b]=h.split(':').map(Number);return a*60+b;};
+function isOpenAt(r,h){const t=timeToMin(h),o=timeToMin(r.open),c=timeToMin(r.close);return c>o?(t>=o&&t<=c):(t>=o||t<=c);}
+const mealTime=m=>m==='lunch'?'12:00':'19:00';
+const mealLabel=m=>m==='lunch'?'中餐':'晚餐';
+
+function priceOf(item,sel){let unit=item.p||0,add=0;
+  (item.groups||[]).forEach(g=>{if(g.type==='single'){const ci=sel.single[g.id];if(ci!=null&&g.choices[ci])unit+=g.choices[ci].p;}
+    if(g.type==='multi'){const m=sel.multi[g.id]||{};for(const ci in m)add+=g.choices[ci].p*m[ci];}});
+  return{unit,add,total:unit*(sel.qty||1)+add};}
+function optLabel(item,sel){const s=[],a=[];
+  (item.groups||[]).forEach(g=>{if(g.type==='single'){const ci=sel.single[g.id];if(ci!=null&&g.choices[ci]&&g.choices[ci].n!=='一般')s.push(g.choices[ci].n);}
+    if(g.type==='multi'){const m=sel.multi[g.id]||{};for(const ci in m)if(m[ci]>0)a.push(g.choices[ci].n+(m[ci]>1?'×'+m[ci]:''));}});
+  let r='';if(s.length)r+='（'+s.join('・')+'）';if(a.length)r+=' ＋'+a.join('、');return r.trim();}
+function choiceBadge(item,g,c){if(!c.p)return'';if(g.id==='meat'&&(item.p||0)===0)return fmt(c.p);return'+'+c.p;}
+function itemPriceText(it){const has=(it.groups||[]).length>0;if(it.p>0)return fmt(it.p)+(has?' 起':'');
+  const meat=(it.groups||[]).find(g=>g.id==='meat');if(meat)return fmt(Math.min(...meat.choices.map(c=>c.p)))+' 起';return fmt(it.p||0);}
+
+const activeParts=o=>o.participants.filter(p=>!p.noOrder);
+function subtotal(pid,o){o=o||getEditing();return(o.items[pid]||[]).reduce((s,l)=>s+l.total,0);}
+function grandTotal(o){o=o||getEditing();return activeParts(o).reduce((s,p)=>s+subtotal(p.id,o),0);}
+function potCount(o){o=o||getEditing();let c=0;const r=findRest(o.restaurantId);if(!r)return 0;
+  activeParts(o).forEach(p=>(o.items[p.id]||[]).forEach(l=>{const it=r._index[l.itemId];if(it&&it.isPot)c+=l.qty;}));return c;}
+const orderedCount=o=>{o=o||getEditing();return activeParts(o).filter(p=>(o.items[p.id]||[]).length>0).length;};
+const payers=o=>{o=o||getEditing();return activeParts(o).filter(p=>subtotal(p.id,o)>0);};
+function fullyPaid(o){const ps=payers(o);return ps.length>0&&ps.every(p=>o.pay[p.id]&&o.pay[p.id].settled);}
+function minStatus(o){o=o||getEditing();const r=findRest(o.restaurantId);if(!r)return null;const mo=r.minOrder;
+  if(mo.type==='amount'){const cur=grandTotal(o);return{cur,met:cur>=mo.value,curText:fmt(cur),goalText:fmt(mo.value),pct:Math.min(100,mo.value?cur/mo.value*100:100)};}
+  const cur=potCount(o);return{cur,met:cur>=mo.value,curText:cur+' '+mo.unit,goalText:mo.value+' '+mo.unit,pct:Math.min(100,mo.value?cur/mo.value*100:100)};}
+
+/* ============================================================ 導覽 ============================================================ */
+const STEPS=[['meal','訂單'],['people','同仁'],['restaurant','餐廳'],['order','點餐'],['summary','清單'],['money','收款']];
+function goStep(k){const o=getEditing();o.step=k;if(!o.reached.includes(k))o.reached.push(k);save();window.scrollTo(0,0);render();}
+function goHome(){state.screen='home';state.editingId=null;save();render();window.scrollTo(0,0);}
+
+/* ============================================================ Render ============================================================ */
+function render(){
+  hideBottom();
+  $('#app').innerHTML=headerHTML()+`<div class="wrap" id="wrap"></div>`;
+  const w=$('#wrap');
+  if(state.screen==='home')renderHomeList(w);
+  else if(state.screen==='archived')renderArchived(w);
+  else{({meal:renderMeal,people:renderPeople,restaurant:renderRestaurant,order:renderOrder,summary:renderSummary,money:renderMoney}[getEditing().step])(w);}
+  bindHeader();save();
+}
+function headerHTML(){
+  if(state.screen==='home'||state.screen==='archived'){
+    return `<div class="hdr"><div class="hdr-top">
+      <button class="brand" id="bHome"><span class="dot"></span>病房訂餐</button>
+      <div style="display:flex;gap:8px"><button class="hdr-menu" id="bRoster">名單管理</button><button class="hdr-menu" id="bAdmin">餐廳後台</button></div></div></div>`;
+  }
+  const o=getEditing();
+  const steps=STEPS.map((s,i)=>{const reached=o.reached.includes(s[0]);const cls=['step'];
+    if(s[0]===o.step)cls.push('active');else if(reached)cls.push('done');
+    if(reached&&s[0]!==o.step)cls.push('clickable');
+    const inner=`<span class="n">${reached&&s[0]!==o.step?'✓':(i+1)}</span>${s[1]}`;
+    const sep=i<STEPS.length-1?'<span class="sep step">›</span>':'';
+    return `<button class="${cls.join(' ')}" data-go="${reached?s[0]:''}">${inner}</button>${sep}`;}).join('');
+  return `<div class="hdr"><div class="hdr-top">
+    <button class="brand" id="bHome"><span class="dot"></span>病房訂餐 <small>${o.meal?mealLabel(o.meal)+' · '+o.date.slice(5):'新訂單'}</small></button>
+    <button class="hdr-menu" id="bHome2">← 訂單列表</button></div>
+    <div class="steps">${steps}</div></div>`;
+}
+function bindHeader(){
+  const bh=$('#bHome');if(bh)bh.onclick=goHome;
+  const bh2=$('#bHome2');if(bh2)bh2.onclick=goHome;
+  const ba=$('#bAdmin');if(ba)ba.onclick=openAdmin;
+  const br=$('#bRoster');if(br)br.onclick=()=>openRoster(()=>render());
+  document.querySelectorAll('.step[data-go]').forEach(el=>{const g=el.getAttribute('data-go');if(g)el.onclick=()=>goStep(g);});
+}
+
+/* ---------- 首頁：訂單列表 ---------- */
+function stageOf(o){if(!o.restaurantId||grandTotal(o)===0)return{t:'點餐中',cls:'stage-order'};
+  if(fullyPaid(o))return{t:'已收齊，可封存',cls:'stage-ready'};return{t:'待收款',cls:'stage-pay'};}
+function renderHomeList(w){
+  const active=state.orders.filter(o=>o.status==='active');
+  const archived=state.orders.filter(o=>o.status==='archived');
+  w.innerHTML=`
+    <button class="bigbtn" id="bNew" style="margin-top:6px">＋ 新增訂單</button>
+    <div class="section-label">進行中的訂單（${active.length}）</div>
+    ${active.length?active.map(o=>{
+      const st=stageOf(o),r=findRest(o.restaurantId),ps=payers(o),settled=ps.filter(p=>o.pay[p.id]&&o.pay[p.id].settled).length;
+      return `<div class="o-card">
+        <div class="o-t"><span class="o-meal">${o.meal?mealLabel(o.meal):'未選餐別'} · ${o.date.slice(5)}</span><span class="o-stage ${st.cls}">${st.t}</span></div>
+        <div class="o-meta">${r?esc(r.name):'尚未選餐廳'}　·　${activeParts(o).length} 人訂餐<br>
+          合計 <b class="tnum">${fmt(grandTotal(o))}</b>${ps.length?`　·　已結清 ${settled}/${ps.length}`:''}</div>
+        <div class="o-foot"><button class="o-del" data-del="${o.id}">刪除</button>
+          <button class="sbtn pri" data-open="${o.id}">開啟</button></div>
+      </div>`;}).join(''):`<div class="empty">目前沒有進行中的訂單<br>按上方「新增訂單」開始</div>`}
+    <button class="link" id="bArch">查看已封存訂單（${archived.length}）→</button>
+    <div class="acct">登入帳號 ${esc(auth.session&&auth.session.email||'')}　<button class="link" id="bLogout">登出</button></div>
+  `;
+  $('#bLogout').onclick=()=>askConfirm('確定要登出嗎？',()=>signOut(),{danger:false,okText:'登出'});
+  $('#bNew').onclick=()=>{const o=newOrder();state.orders.unshift(o);state.editingId=o.id;state.screen='wizard';save();render();};
+  $('#bArch').onclick=()=>{state.screen='archived';render();};
+  w.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{state.editingId=b.getAttribute('data-open');state.screen='wizard';render();});
+  w.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>askConfirm('刪除這筆訂單？無法復原。',()=>{state.orders=state.orders.filter(o=>o.id!==b.getAttribute('data-del'));save();render();}));
+}
+/* ---------- 已封存 ---------- */
+function renderArchived(w){
+  const arr=state.orders.filter(o=>o.status==='archived').sort((a,b)=>(b.archivedAt||0)-(a.archivedAt||0));
+  w.innerHTML=`<div class="h1">已封存訂單</div><p class="sub">已完成收款並封存的訂單，點開可檢視。</p>
+    ${arr.length?arr.map(o=>{const r=findRest(o.restaurantId);
+      return `<div class="o-card"><div class="o-t"><span class="o-meal">${mealLabel(o.meal)} · ${o.date.slice(5)}</span>
+        <span class="o-stage stage-ready">已封存</span></div>
+        <div class="o-meta">${r?esc(r.name):''}　·　${activeParts(o).length} 人　·　合計 <b class="tnum">${fmt(grandTotal(o))}</b></div>
+        <div class="o-foot"><button class="o-del" data-unarch="${o.id}">↩ 還原為進行中</button>
+          <button class="sbtn" data-view="${o.id}">檢視</button></div></div>`;}).join(''):`<div class="empty">還沒有封存的訂單</div>`}
+    <button class="link" id="back">← 回訂單列表</button>`;
+  $('#back').onclick=()=>{state.screen='home';render();};
+  w.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>viewArchived(state.orders.find(o=>o.id===b.getAttribute('data-view'))));
+  w.querySelectorAll('[data-unarch]').forEach(b=>b.onclick=()=>{const o=state.orders.find(x=>x.id===b.getAttribute('data-unarch'));o.status='active';delete o.archivedAt;save();render();toast('已還原');});
+}
+function viewArchived(o){const{body}=sheet('訂單明細 · '+mealLabel(o.meal)+' '+o.date,null);
+  const r=findRest(o.restaurantId);
+  body.innerHTML=`<div class="list" style="margin-bottom:14px"><div class="store-head"><div class="rn">${r?esc(r.name):''}</div>
+    ${r?`<div class="ph tnum">電話 ${esc(r.phone)}</div>`:''}</div>
+    ${payers(o).map(p=>{const pay=o.pay[p.id]||{};const rec=pay.received;
+      return `<div class="agg"><div class="an"><b>${esc(p.name)}</b>${(o.items[p.id]||[]).map(l=>`<div class="opt">${l.qty}× ${esc(l.name)}${esc(l.opt||'')}</div>`).join('')}</div>
+      <div style="text-align:right;font-size:13px"><div class="tnum" style="font-weight:800">${fmt(subtotal(p.id,o))}</div>
+      <div class="opt tnum" style="color:var(--muted)">收${rec!=null?fmt(rec):'—'} 找${rec!=null?fmt(Math.max(0,rec-subtotal(p.id,o))):'—'}</div>
+      <div class="opt" style="color:var(--good);font-weight:700">${pay.settled?'已結清':''}</div></div></div>`;}).join('')}
+    <div class="grand"><span>合計</span><span class="tnum">${fmt(grandTotal(o))}</span></div></div>`;
+}
+
+/* ---------- 步驟1 餐別 ---------- */
+function renderMeal(w){const o=getEditing();
+  w.innerHTML=`<div class="h1">新增訂單</div><p class="sub">選擇中餐或晚餐，用來篩掉當下沒營業的餐廳。</p>
+    <div class="field"><label>訂餐日期</label><input type="date" id="dt" value="${o.date}"></div>
+    <div class="field"><label>餐別</label><div class="meal-grid">
+      <button class="meal ${o.meal==='lunch'?'sel':''}" data-m="lunch"><div class="emo">☀︎</div><div class="t">中餐</div><div class="tm">用 12:00 篩選營業中</div></button>
+      <button class="meal ${o.meal==='dinner'?'sel':''}" data-m="dinner"><div class="emo">☾︎</div><div class="t">晚餐</div><div class="tm">用 19:00 篩選營業中</div></button>
+    </div></div>`;
+  $('#dt').onchange=e=>{o.date=e.target.value;save();};
+  w.querySelectorAll('.meal').forEach(b=>b.onclick=()=>{o.meal=b.dataset.m;goStep('people');});
+}
+
+/* ---------- 步驟2 選同仁 ---------- */
+function renderPeople(w){const o=getEditing(),q=state.ui.peopleQuery.trim();
+  const chosen=new Set(o.participants.map(p=>p.id));
+  const list=state.roster.filter(p=>!q||p.name.includes(q));
+  w.innerHTML=`<div class="h1">選擇訂餐同仁</div><p class="sub">勾選今天要訂餐的人。自帶便當者仍可勾選。</p>
+    <div class="searchbar"><input id="pq" placeholder="搜尋姓名…" value="${esc(state.ui.peopleQuery)}"><button class="sbtn" id="mng">管理名單</button></div>
+    <div class="list">${list.map(p=>`<div class="p-row ${chosen.has(p.id)?'on':''}" data-id="${p.id}">
+      <div class="chk">${chosen.has(p.id)?'✓':''}</div><div class="p-name">${esc(p.name)}</div>
+      ${p.bringOwn?'<span class="tag bento">自帶</span>':''}${p.favorites.length?`<span class="tag fav">♥ ${p.favorites.length}</span>`:''}</div>`).join('')||`<div class="empty">找不到「${esc(q)}」</div>`}</div>
+    <div class="section-label">臨時新增（不加進母名單）</div>
+    <div class="searchbar"><input id="adhoc" placeholder="輸入姓名，例如：值班醫師"><button class="sbtn pri" id="addAd">加入</button></div>
+    ${o.participants.filter(p=>p.adhoc).map(p=>`<span class="tag ad" data-rmad="${p.id}" style="margin:3px 6px 0 0;display:inline-block">${esc(p.name)} ✕</span>`).join('')}`;
+  const pq=$('#pq');pq.oninput=e=>{state.ui.peopleQuery=e.target.value;const s=pq.selectionStart;renderPeople(w);const n=$('#pq');n.focus();n.setSelectionRange(s,s);};
+  w.querySelectorAll('.p-row').forEach(row=>row.onclick=()=>{const id=row.dataset.id;
+    if(chosen.has(id))removeParticipant(o,id);else{const src=state.roster.find(p=>p.id===id);o.participants.push({id:src.id,name:src.name,favorites:[...src.favorites],adhoc:false,noOrder:false});}
+    save();renderPeople(w);updateBottom();});
+  $('#mng').onclick=()=>openRoster(()=>renderPeople(w));
+  $('#addAd').onclick=()=>{const v=$('#adhoc').value.trim();if(!v)return;o.participants.push({id:uid(),name:v,favorites:[],adhoc:true,noOrder:false});save();renderPeople(w);updateBottom();};
+  w.querySelectorAll('[data-rmad]').forEach(el=>el.onclick=()=>{removeParticipant(o,el.getAttribute('data-rmad'));save();renderPeople(w);updateBottom();});
+  bottomBar({l1:'已選訂餐同仁',l2:o.participants.length+' 人',btn:'下一步：選餐廳',disabled:o.participants.length===0,onClick:()=>goStep('restaurant')});
+}
+function removeParticipant(o,id){o.participants=o.participants.filter(p=>p.id!==id);delete o.items[id];delete o.pay[id];}
+const hasItems=o=>Object.values(o.items||{}).some(a=>a&&a.length);
+function clearOrderItems(o){o.items={};o.pay={};}
+
+/* ---------- 名單管理 ---------- */
+function openRoster(onClose){
+  const{body,close}=sheet('管理單位名單',onClose);
+  const draw=()=>{body.innerHTML=state.roster.map(p=>`<div class="card" style="padding:13px 14px;margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <input value="${esc(p.name)}" data-rn="${p.id}" style="flex:1;border:1px solid var(--line-strong);border-radius:8px;padding:9px 11px;font-weight:600">
+      <button class="mini-del" data-del="${p.id}">✕</button></div>
+    <label class="settle" style="margin-top:11px;cursor:pointer"><span class="chk" data-bo="${p.id}" style="${p.bringOwn?'background:var(--warn);border-color:var(--warn)':''}">${p.bringOwn?'✓':''}</span>自帶便當、不訂餐</label>
+    <div class="lbl2">喜愛餐廳（可多選）</div><div class="opts">${state.restaurants.map(r=>`<button class="opt-b ${p.favorites.includes(r.id)?'on':''}" data-fav="${p.id}|${r.id}">${esc(r.name)}</button>`).join('')||'<span class="grp-sub">尚無餐廳，請先到餐廳後台建立</span>'}</div></div>`).join('')+
+    `<button class="sbtn pri" id="addP" style="width:100%;padding:13px">＋ 新增同仁至母名單</button>`;
+    body.querySelectorAll('[data-rn]').forEach(inp=>inp.onchange=e=>{const p=state.roster.find(x=>x.id===inp.dataset.rn);p.name=e.target.value.trim()||p.name;
+      state.orders.forEach(o=>{const op=o.participants.find(x=>x.id===p.id);if(op)op.name=p.name;});save();});
+    body.querySelectorAll('[data-bo]').forEach(el=>el.onclick=()=>{const p=state.roster.find(x=>x.id===el.getAttribute('data-bo'));p.bringOwn=!p.bringOwn;save();draw();});
+    body.querySelectorAll('[data-fav]').forEach(el=>el.onclick=()=>{const[pid,rid]=el.getAttribute('data-fav').split('|');const p=state.roster.find(x=>x.id===pid);
+      p.favorites.includes(rid)?p.favorites=p.favorites.filter(x=>x!==rid):p.favorites.push(rid);
+      state.orders.forEach(o=>{const op=o.participants.find(x=>x.id===pid);if(op)op.favorites=[...p.favorites];});save();draw();});
+    body.querySelectorAll('[data-del]').forEach(el=>el.onclick=()=>{const id=el.getAttribute('data-del');askConfirm('從母名單移除這位同仁？',()=>{state.roster=state.roster.filter(x=>x.id!==id);save();draw();});});
+    $('#addP').onclick=()=>askPrompt('新同仁姓名：',(n)=>{state.roster.push({id:uid(),name:n,bringOwn:false,favorites:[]});save();draw();},{placeholder:'輸入姓名'});
+  };draw();
+}
+
+/* ---------- 步驟3 選餐廳 ---------- */
+function renderRestaurant(w){const o=getEditing(),t=mealTime(o.meal);
+  const favCount=r=>o.participants.filter(p=>p.favorites&&p.favorites.includes(r.id)).length;
+  const open=state.restaurants.filter(r=>isOpenAt(r,t));const closed=state.restaurants.length-open.length;
+  open.sort((a,b)=>favCount(b)-favCount(a));
+  w.innerHTML=`<div class="h1">選擇餐廳</div><p class="sub">${mealLabel(o.meal)}（${t}）· 依今日訂餐同仁喜好排序${closed?` · 已隱藏 ${closed} 家未營業`:''}</p>
+    ${open.map(r=>{const fc=favCount(r);const mo=r.minOrder.type==='amount'?`滿 ${fmt(r.minOrder.value)}`:`${r.minOrder.value} ${r.minOrder.unit}以上`;
+      return `<button class="r-card" data-r="${r.id}">${fc?`<span class="favpill">♥ ${fc} 位喜愛</span>`:''}
+        <div class="rn">${esc(r.name)}<span class="r-open">營業中</span></div>
+        <div class="meta">營業 ${r.open}–${r.close}${r.hoursNote?` <span style="color:var(--warn)">・${esc(r.hoursNote)}</span>`:''}<br>
+        外送門檻 <b>${mo}</b> · 電話 ${esc(r.phone)}<br>${r.menu.reduce((s,c)=>s+c.items.length,0)} 項餐點</div></button>`;}).join('')||`<div class="empty">此時段沒有營業中的餐廳</div>`}`;
+  w.querySelectorAll('.r-card').forEach(el=>el.onclick=()=>{const rid=el.dataset.r;
+    if(o.restaurantId&&o.restaurantId!==rid&&hasItems(o)){askConfirm('換成其他餐廳會清除目前所有點餐內容，確定嗎？',()=>{clearOrderItems(o);o.restaurantId=rid;save();goStep('order');});return;}
+    o.restaurantId=rid;save();goStep('order');});
+}
+
+/* ---------- 步驟4 點餐 ---------- */
+function renderOrder(w){const o=getEditing(),r=findRest(o.restaurantId),ms=minStatus(o);
+  w.innerHTML=`<div class="h1">開始點餐</div>
+    <div class="mini-r"><div><div class="rn">${esc(r.name)}</div><div class="ph">電話 ${esc(r.phone)}</div></div><button class="chg" id="chgR">換餐廳</button></div>
+    <div class="meter ${ms.met?'met':''}"><div class="top"><span>外送低消進度</span><span class="muted tnum">${ms.curText} / ${ms.goalText}</span></div>
+      <div class="bar"><span style="width:${ms.pct}%"></span></div><div class="status">${ms.met?'✓ 已達外送門檻':'還沒到外送門檻，再湊一點'}</div></div>
+    <button class="addpeople" id="addPpl">＋ 新增 / 管理訂餐同仁（目前 ${o.participants.length} 人）</button>
+    ${o.participants.map(p=>{const items=o.items[p.id]||[],st=subtotal(p.id,o),roster=state.roster.find(x=>x.id===p.id);
+      return `<div class="person-block ${p.noOrder?'no-order':''}">
+        <div class="person-head"><div class="pn">${esc(p.name)}
+          ${roster&&roster.bringOwn?'<span class="tag bento">自帶</span>':''}${p.adhoc?'<span class="tag ad">臨時</span>':''}${p.noOrder?'<span class="tag no">不訂餐</span>':''}</div>
+          <div class="ph-actions">
+            <button class="ph-btn ${p.noOrder?'on':''}" data-no="${p.id}">${p.noOrder?'改為訂餐':'不訂餐'}</button>
+            <button class="ph-x" data-rm="${p.id}">✕</button></div></div>
+        ${p.noOrder?'':`<div style="padding:0 14px 2px;text-align:right" class="ps tnum">${items.length?fmt(st):'尚未點餐'}</div>
+        ${items.map(l=>`<div class="li"><div class="li-main"><div class="li-name">${esc(l.name)}${l.qty>1?' ×'+l.qty:''}</div>
+          ${l.opt?`<div class="li-opt">${esc(l.opt)}</div>`:''}${l.note?`<div class="li-note">備註 ${esc(l.note)}</div>`:''}</div>
+          <div class="li-price tnum">${fmt(l.total)}</div><button class="li-del" data-del="${p.id}|${l.uid}">✕</button></div>`).join('')}
+        <button class="addbtn" data-add="${p.id}">＋ 為 ${esc(p.name)} 新增餐點</button>`}
+      </div>`;}).join('')}`;
+  $('#chgR').onclick=()=>{if(hasItems(o))askConfirm('換餐廳會清除目前所有點餐內容，確定要換嗎？',()=>{clearOrderItems(o);save();goStep('restaurant');});else goStep('restaurant');};
+  $('#addPpl').onclick=()=>openPeoplePicker(()=>renderOrder(w));
+  w.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>openMenu(b.getAttribute('data-add'),()=>renderOrder(w)));
+  w.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{const[pid,lid]=b.getAttribute('data-del').split('|');o.items[pid]=(o.items[pid]||[]).filter(l=>l.uid!==lid);save();renderOrder(w);});
+  w.querySelectorAll('[data-no]').forEach(b=>b.onclick=()=>{const p=o.participants.find(x=>x.id===b.getAttribute('data-no'));p.noOrder=!p.noOrder;save();renderOrder(w);});
+  w.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{const p=o.participants.find(x=>x.id===b.getAttribute('data-rm'));askConfirm('將 '+p.name+' 移出本次訂單？',()=>{removeParticipant(o,p.id);save();renderOrder(w);});});
+  bottomBar({l1:'合計 · '+orderedCount(o)+'/'+activeParts(o).length+' 人已點',l2:fmt(grandTotal(o)),btn:'產生清單',disabled:grandTotal(o)===0,onClick:()=>goStep('summary')});
+}
+
+/* 點餐頁：加入/管理同仁 */
+function openPeoplePicker(onClose){const o=getEditing();
+  const{body,close}=sheet('新增 / 管理訂餐同仁',onClose);
+  const draw=()=>{const q=state.ui.peopleQuery.trim();const chosen=new Set(o.participants.map(p=>p.id));
+    const list=state.roster.filter(p=>!q||p.name.includes(q));
+    body.innerHTML=`<div class="searchbar"><input id="pq2" placeholder="搜尋姓名…" value="${esc(state.ui.peopleQuery)}"></div>
+      <div class="list">${list.map(p=>`<div class="p-row ${chosen.has(p.id)?'on':''}" data-id="${p.id}"><div class="chk">${chosen.has(p.id)?'✓':''}</div>
+        <div class="p-name">${esc(p.name)}</div>${p.bringOwn?'<span class="tag bento">自帶</span>':''}</div>`).join('')||`<div class="empty">找不到「${esc(q)}」</div>`}</div>
+      <div class="lbl2">臨時新增（不加進母名單）</div>
+      <div class="searchbar"><input id="ad2" placeholder="輸入姓名"><button class="sbtn pri" id="addad2">加入</button></div>`;
+    const pq=body.querySelector('#pq2');pq.oninput=e=>{state.ui.peopleQuery=e.target.value;const s=pq.selectionStart;draw();const n=body.querySelector('#pq2');n.focus();n.setSelectionRange(s,s);};
+    body.querySelectorAll('.p-row').forEach(row=>row.onclick=()=>{const id=row.dataset.id;
+      if(chosen.has(id))removeParticipant(o,id);else{const src=state.roster.find(p=>p.id===id);o.participants.push({id:src.id,name:src.name,favorites:[...src.favorites],adhoc:false,noOrder:false});}save();draw();});
+    body.querySelector('#addad2').onclick=()=>{const v=body.querySelector('#ad2').value.trim();if(!v)return;o.participants.push({id:uid(),name:v,favorites:[],adhoc:true,noOrder:false});save();draw();};
+  };draw();
+}
+
+/* ---------- 菜單瀏覽 ---------- */
+function openMenu(pid,onClose){const o=getEditing(),r=findRest(o.restaurantId);const p=o.participants.find(x=>x.id===pid);
+  const{body,close}=sheet('為 '+p.name+' 點餐',onClose);
+  r.menu.forEach((c,ci)=>{if(state.ui.openCats[r.id+ci]===undefined)state.ui.openCats[r.id+ci]=true;});
+  const draw=()=>{body.innerHTML=r.menu.map((c,ci)=>{const open=state.ui.openCats[r.id+ci]!==false;
+    return `<div class="cat"><button class="cat-h" data-cat="${ci}"><span>${esc(c.cat)}</span><span class="cnt">${open?'▾':'▸'} ${c.items.length}</span></button>
+      ${open?`<div class="cat-items">${c.items.map(it=>`<button class="mi" data-it="${it.id}"><span><span class="mn">${esc(it.n)}</span>${(it.groups||[]).length?'<span class="mo">可選配</span>':''}</span>
+        <span style="display:flex;align-items:center"><span class="mp tnum">${itemPriceText(it)}</span><span class="plus">＋</span></span></button>`).join('')}</div>`:''}</div>`;}).join('');
+    body.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{const k=r.id+b.getAttribute('data-cat');state.ui.openCats[k]=state.ui.openCats[k]===false?true:false;draw();});
+    body.querySelectorAll('[data-it]').forEach(b=>b.onclick=()=>openItem(pid,r._index[b.getAttribute('data-it')],null,close,onClose));
+  };draw();
+}
+/* ---------- 單品客製 ---------- */
+function openItem(pid,item,editLine,closeMenu,afterOrder){const o=getEditing();
+  const sel=editLine?clone(editLine.sel):{qty:1,single:{},multi:{},note:''};
+  (item.groups||[]).forEach(g=>{if(g.type==='single'&&g.required&&sel.single[g.id]==null)sel.single[g.id]=0;});
+  const{body,footer,close}=sheet(item.n,null,true);
+  const draw=()=>{const gh=(item.groups||[]).map(g=>{
+    if(g.type==='single'){return `<div class="grp"><div class="grp-t">${esc(g.name)}${g.required?'<span class="req">必選</span>':''}</div>
+      <div class="opts">${g.choices.map((c,ci)=>`<button class="opt-b ${sel.single[g.id]===ci?'on':''}" data-sg="${g.id}|${ci}">${esc(c.n)}${choiceBadge(item,g,c)?`<span class="d">${choiceBadge(item,g,c)}</span>`:''}</button>`).join('')}</div></div>`;}
+    const byP={};g.choices.forEach((c,ci)=>{(byP[c.p]=byP[c.p]||[]).push({c,ci});});const prices=Object.keys(byP).map(Number).sort((a,b)=>b-a);
+    return `<div class="grp"><div class="grp-t">${esc(g.name)}</div><div class="grp-sub">可複選、可加數量</div>
+      ${prices.map(pr=>`<div class="addcat">${fmt(pr)} 加點</div>${byP[pr].map(({c,ci})=>{const q=(sel.multi[g.id]&&sel.multi[g.id][ci])||0;
+        return `<div class="add-row"><span class="anm">${esc(c.n)}</span><span class="apr tnum">${fmt(c.p)}</span>
+        <span class="stepper"><button data-mm="${g.id}|${ci}|-1" ${q===0?'disabled':''}>−</button><span class="q tnum">${q}</span><button data-mm="${g.id}|${ci}|1">＋</button></span></div>`;}).join('')}`).join('')}</div>`;}).join('');
+    body.innerHTML=`<div class="grp"><div class="grp-t">數量</div><div class="qty-big" style="display:flex;align-items:center;gap:14px">
+      <span class="stepper"><button data-q="-1" ${sel.qty<=1?'disabled':''}>−</button><span class="q tnum">${sel.qty}</span><button data-q="1">＋</button></span><span style="color:var(--muted);font-size:13px">份</span></div></div>
+      ${gh}<div class="grp"><div class="grp-t">備註</div><textarea class="note-in" id="note" placeholder="例如：不要香菜、麵換細麵…">${esc(sel.note)}</textarea></div>`;
+    footer.innerHTML=`<button class="btn" id="addit" style="flex:1">${editLine?'更新餐點':'加入'} · ${fmt(priceOf(item,sel).total)}</button>`;
+    body.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{sel.qty=Math.max(1,sel.qty+ +b.getAttribute('data-q'));draw();});
+    body.querySelectorAll('[data-sg]').forEach(b=>b.onclick=()=>{const[gid,ci]=b.getAttribute('data-sg').split('|');sel.single[gid]=+ci;draw();});
+    body.querySelectorAll('[data-mm]').forEach(b=>b.onclick=()=>{const[gid,ci,d]=b.getAttribute('data-mm').split('|');sel.multi[gid]=sel.multi[gid]||{};
+      sel.multi[gid][ci]=Math.max(0,(sel.multi[gid][ci]||0)+ +d);if(sel.multi[gid][ci]===0)delete sel.multi[gid][ci];draw();});
+    body.querySelector('#note').oninput=e=>sel.note=e.target.value;
+    footer.querySelector('#addit').onclick=()=>{for(const g of(item.groups||[]))if(g.type==='single'&&g.required&&sel.single[g.id]==null){toast('請先選擇「'+g.name+'」');return;}
+      const line={uid:editLine?editLine.uid:uid(),itemId:item.id,name:item.n,qty:sel.qty,sel:clone(sel),opt:optLabel(item,sel),note:sel.note.trim(),total:priceOf(item,sel).total};
+      const arr=o.items[pid]=o.items[pid]||[];if(editLine){arr[arr.findIndex(l=>l.uid===editLine.uid)]=line;}else arr.push(line);
+      save();close();if(closeMenu)closeMenu();if(afterOrder)afterOrder();toast('已加入 '+item.n);};
+  };draw();
+}
+
+/* ---------- 步驟5 清單 ---------- */
+function aggregate(o){o=o||getEditing();const map={};
+  activeParts(o).forEach(p=>(o.items[p.id]||[]).forEach(l=>{const key=l.name+'|'+l.opt+'|'+l.note;
+    if(!map[key])map[key]={name:l.name,opt:l.opt,note:l.note,qty:0,total:0};map[key].qty+=l.qty;map[key].total+=l.total;}));return Object.values(map);}
+function renderSummary(w){const o=getEditing(),r=findRest(o.restaurantId),view=state.ui.summaryView,ms=minStatus(o);
+  const storeView=()=>`<div class="list"><div class="store-head"><div class="rn">${esc(r.name)}</div><div class="ph tnum">電話 ${esc(r.phone)}</div>
+    <div style="margin-top:6px;font-size:13px;font-weight:700;color:${ms.met?'var(--good)':'var(--warn)'}">${ms.met?'✓ ':'△ '}外送門檻 ${ms.curText} / ${ms.goalText}</div></div>
+    ${aggregate(o).map(a=>`<div class="agg"><div class="qty tnum">${a.qty}×</div><div class="an">${esc(a.name)}${a.opt?`<div class="opt">${esc(a.opt)}</div>`:''}${a.note?`<div class="opt" style="color:var(--warn)">備註 ${esc(a.note)}</div>`:''}</div>
+    <div class="tnum" style="font-weight:700">${fmt(a.total)}</div></div>`).join('')}
+    <div class="grand"><span>合計</span><span class="tnum">${fmt(grandTotal(o))}</span></div></div><button class="copybtn" id="copy">複製給店家的下單文字</button>`;
+  const personView=()=>activeParts(o).filter(p=>(o.items[p.id]||[]).length).map(p=>`<div class="list" style="margin-bottom:12px">
+    <div class="store-head" style="display:flex;justify-content:space-between;align-items:center"><div class="rn" style="font-size:16px">${esc(p.name)}</div><div class="tnum" style="font-weight:800">${fmt(subtotal(p.id,o))}</div></div>
+    ${(o.items[p.id]).map(l=>`<div class="agg"><div class="qty tnum">${l.qty}×</div><div class="an">${esc(l.name)}${l.opt?`<div class="opt">${esc(l.opt)}</div>`:''}${l.note?`<div class="opt" style="color:var(--warn)">備註 ${esc(l.note)}</div>`:''}</div><div class="tnum" style="font-weight:700">${fmt(l.total)}</div></div>`).join('')}</div>`).join('')+`<button class="copybtn" id="copy">複製分菜清單（誰點什麼）</button>`;
+  w.innerHTML=`<div class="h1">訂單清單</div><p class="sub">給店家的是合併後的下單量；分菜清單方便到貨分給每人。不訂餐者不會出現。</p>
+    <div class="seg"><button class="${view==='store'?'on':''}" data-v="store">給店家（彙總）</button><button class="${view==='person'?'on':''}" data-v="person">分菜（每人）</button></div>
+    ${view==='store'?storeView():personView()}`;
+  w.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{state.ui.summaryView=b.dataset.v;renderSummary(w);});
+  $('#copy').onclick=()=>copyText(view==='store'?storeText(o):personText(o));
+  bottomBar({l1:'合計 · '+orderedCount(o)+' 人',l2:fmt(grandTotal(o)),btn:'下一步：收款',onClick:()=>goStep('money')});
+}
+function storeText(o){const r=findRest(o.restaurantId),ms=minStatus(o);let s=`【${r.name} 外送訂單】\n電話 ${r.phone}\n餐別：${mealLabel(o.meal)}（${o.date}）\n—\n`;
+  aggregate(o).forEach(a=>s+=`${a.qty}× ${a.name}${a.opt||''}${a.note?'（'+a.note+'）':''}\n`);s+=`—\n合計 ${fmt(grandTotal(o))}（外送門檻 ${ms.curText}/${ms.goalText}）`;return s;}
+function personText(o){let s=`【分菜清單 · ${mealLabel(o.meal)} ${o.date}】\n`;activeParts(o).forEach(p=>{const arr=o.items[p.id]||[];if(!arr.length)return;
+  s+=`\n${p.name}（${fmt(subtotal(p.id,o))}）\n`;arr.forEach(l=>s+=`　${l.qty}× ${l.name}${l.opt||''}${l.note?'（'+l.note+'）':''}\n`);});s+=`\n總計 ${fmt(grandTotal(o))}`;return s;}
+
+/* ---------- 步驟6 收款 ---------- */
+function renderMoney(w){const o=getEditing();const ps=payers(o);
+  ps.forEach(p=>{if(!o.pay[p.id])o.pay[p.id]={received:null,settled:false};});
+  const totalDue=grandTotal(o),totalRecv=ps.reduce((s,p)=>s+(o.pay[p.id].received||0),0);
+  const totalChange=ps.reduce((s,p)=>{const r=o.pay[p.id].received;return s+(r!=null?Math.max(0,r-subtotal(p.id,o)):0);},0);
+  const settled=ps.filter(p=>o.pay[p.id].settled).length;const paid=fullyPaid(o);
+  w.innerHTML=`<div class="h1">收款結清</div><p class="sub">記錄每人收多少、預計找多少（不一定當下找）。全部結清後即可封存。</p>
+    <div class="summary-strip"><div class="stat"><div class="k">總應收</div><div class="v tnum">${fmt(totalDue)}</div></div>
+      <div class="stat"><div class="k">總實收</div><div class="v tnum" id="mTotRecv">${fmt(totalRecv)}</div></div>
+      <div class="stat"><div class="k">已結清</div><div class="v tnum">${settled}/${ps.length}</div></div></div>
+    ${ps.length?ps.map(p=>{const due=subtotal(p.id,o),pay=o.pay[p.id],rec=pay.received;const ch=rec!=null?rec-due:null;
+      let cc='zero',ct='—';if(ch!=null){ct=fmt(ch);cc=ch>0?'pos':(ch<0?'neg':'zero');}
+      return `<div class="m-row ${pay.settled?'settled':''}"><div class="m-hd"><div class="pn">${esc(p.name)}</div>
+        <label class="settle-mini"><span class="chk" data-settle="${p.id}">${pay.settled?'✓':''}</span>已結清</label></div>
+        <div class="m-cols">
+          <div class="m-cell"><div class="k">應收</div><div class="v tnum">${fmt(due)}</div></div>
+          <div class="m-cell"><div class="k">實收現金</div><input type="number" inputmode="numeric" placeholder="0" value="${rec!=null?rec:''}" data-recv="${p.id}"></div>
+          <div class="m-cell"><div class="k">預計找零</div><div class="v ${cc} tnum" data-change="${p.id}">${ch!=null&&ch<0?'缺'+fmt(-ch):ct}</div></div>
+        </div></div>`;}).join(''):`<div class="empty">目前沒有需要收款的人</div>`}`;
+  w.querySelectorAll('[data-recv]').forEach(inp=>inp.oninput=e=>{const id=inp.getAttribute('data-recv');const v=e.target.value.trim();const num=+v;
+    o.pay[id].received=(v===''||isNaN(num))?null:Math.round(num);save();updateMoneyRow(id,o);});
+  w.querySelectorAll('[data-settle]').forEach(el=>el.onclick=()=>{const id=el.getAttribute('data-settle');o.pay[id].settled=!o.pay[id].settled;save();renderMoney(w);});
+  bottomBar({l1:'預計找零合計 · 已結清 '+settled+'/'+ps.length,l2:fmt(totalChange),
+    btn2:'回列表',onClick2:goHome,
+    btn:paid?'封存訂單':'尚有未結清',disabled:!paid,
+    onClick:()=>{if(paid){o.status='archived';o.archivedAt=Date.now();state.editingId=null;state.screen='home';save();render();toast('訂單已封存');}}});
+}
+function updateMoneyRow(id,o){o=o||getEditing();
+  const due=subtotal(id,o);const rec=o.pay[id]?o.pay[id].received:null;const ch=rec!=null?rec-due:null;
+  const cell=document.querySelector(`[data-change="${id}"]`);
+  if(cell){let cc='zero',ct='—';if(ch!=null){ct=fmt(ch);cc=ch>0?'pos':(ch<0?'neg':'zero');}
+    cell.className='v '+cc+' tnum';cell.textContent=ch!=null&&ch<0?'缺'+fmt(-ch):ct;}
+  const ps=payers(o);const totalRecv=ps.reduce((s,p)=>s+((o.pay[p.id]&&o.pay[p.id].received)||0),0);
+  const totalChange=ps.reduce((s,p)=>{const r=o.pay[p.id]&&o.pay[p.id].received;return s+(r!=null?Math.max(0,r-subtotal(p.id,o)):0);},0);
+  const tr=document.getElementById('mTotRecv');if(tr)tr.textContent=fmt(totalRecv);
+  const bl2=document.querySelector('.bar-bottom .l2');if(bl2)bl2.textContent=fmt(totalChange);
+}
+
+/* ============================================================ 餐廳後台 ============================================================ */
+function openAdmin(){const{body,close}=sheet('餐廳後台',null);
+  const draw=()=>{if(!document.body.contains(body))return;body.innerHTML=`<p class="sub">修改或新增餐廳與菜單。資料存在雲端資料庫，變更會自動儲存。</p>
+    ${state.restaurants.map(r=>`<div class="adm-r"><div class="an">${esc(r.name)}<div class="ac">${r.menu.reduce((s,c)=>s+c.items.length,0)} 項 · ${r.open}–${r.close}</div></div>
+      <button class="sbtn" data-edit="${r.id}">編輯</button><button class="mini-del" data-del="${r.id}">✕</button></div>`).join('')||'<div class="empty">尚無餐廳</div>'}
+    <button class="sbtn pri" id="addR" style="width:100%;padding:13px;margin-top:14px">＋ 新增餐廳</button>`;
+    body.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editRestaurant(b.getAttribute('data-edit'),draw));
+    body.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{const r=findRest(b.getAttribute('data-del'));askConfirm('刪除餐廳「'+r.name+'」？',()=>{state.restaurants=state.restaurants.filter(x=>x.id!==r.id);save();draw();});});
+    $('#addR').onclick=()=>{const r={id:uid(),name:'新餐廳',phone:'',address:'',open:'11:00',close:'20:00',minOrder:{type:'amount',value:0},note:'',menu:[]};state.restaurants.push(r);reindexAll();save();editRestaurant(r.id,draw);};
+  };draw();
+}
+function editRestaurant(rid,after){const r=findRest(rid);const{body,footer,close}=sheet('編輯餐廳',after,true);
+  const draw=()=>{if(!document.body.contains(body))return;body.innerHTML=`
+    <div class="lbl2">店名</div><input class="fi" data-f="name" value="${esc(r.name)}">
+    <div class="fi-row"><div style="flex:1"><div class="lbl2">電話</div><input class="fi" data-f="phone" value="${esc(r.phone)}"></div></div>
+    <div class="lbl2">地址</div><input class="fi" data-f="address" value="${esc(r.address||'')}">
+    <div class="fi-row"><div style="flex:1"><div class="lbl2">開始營業</div><input class="fi" data-f="open" value="${esc(r.open)}" placeholder="11:00"></div>
+      <div style="flex:1"><div class="lbl2">結束營業</div><input class="fi" data-f="close" value="${esc(r.close)}" placeholder="20:00"></div></div>
+    <div class="lbl2">營業時間備註（可空）</div><input class="fi" data-f="hoursNote" value="${esc(r.hoursNote||'')}">
+    <div class="lbl2">外送門檻</div>
+    <div class="fi-row"><select class="fi" data-f="motype" style="flex:1"><option value="amount" ${r.minOrder.type==='amount'?'selected':''}>金額（元）</option><option value="count" ${r.minOrder.type==='count'?'selected':''}>數量</option></select>
+      <input class="fi" data-f="moval" type="number" value="${r.minOrder.value}" style="width:90px">
+      ${r.minOrder.type==='count'?`<input class="fi" data-f="mounit" value="${esc(r.minOrder.unit||'份')}" style="width:70px" placeholder="單位">`:''}</div>
+    <div class="lbl2">備註（可空）</div><input class="fi" data-f="note" value="${esc(r.note||'')}">
+    <div class="lbl2" style="margin-top:18px">菜單</div>
+    ${r.menu.map((c,ci)=>`<div class="adm-cat"><div style="display:flex;gap:6px;align-items:center">
+        <input class="ni" data-cat="${ci}" value="${esc(c.cat)}" style="flex:1;padding:8px 9px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);font-weight:700">
+        <button class="mini-del" data-delcat="${ci}">✕</button></div>
+      ${c.items.map((it,ii)=>`<div class="adm-item"><input class="ni" data-in="${ci}|${ii}" value="${esc(it.n)}">
+        <input class="pi tnum" data-ip="${ci}|${ii}" type="number" value="${it.p||0}">
+        <button class="chip ${(it.groups||[]).length?'on':''}" data-opt="${it.id}">選項${(it.groups||[]).length?'·'+it.groups.length:''}</button>
+        <button class="mini-del" data-delit="${ci}|${ii}">✕</button></div>`).join('')}
+      <button class="sbtn" data-additem="${ci}" style="width:100%;margin-top:8px;padding:9px">＋ 品項</button></div>`).join('')}
+    <button class="sbtn" id="addcat" style="width:100%;padding:11px">＋ 新增分類</button>`;
+    body.querySelectorAll('[data-f]').forEach(el=>el.onchange=()=>{const f=el.getAttribute('data-f');
+      if(f==='motype'){r.minOrder.type=el.value;if(el.value==='count'&&!r.minOrder.unit)r.minOrder.unit='份';reindexAll();save();draw();return;}
+      if(f==='moval'){r.minOrder.value=+el.value||0;}
+      else if(f==='mounit'){r.minOrder.unit=el.value;}
+      else r[f]=el.value;save();});
+    body.querySelectorAll('[data-cat]').forEach(el=>el.onchange=()=>{r.menu[+el.getAttribute('data-cat')].cat=el.value;save();});
+    body.querySelectorAll('[data-in]').forEach(el=>el.onchange=()=>{const[ci,ii]=el.getAttribute('data-in').split('|');r.menu[ci].items[ii].n=el.value;save();});
+    body.querySelectorAll('[data-ip]').forEach(el=>el.onchange=()=>{const[ci,ii]=el.getAttribute('data-ip').split('|');r.menu[ci].items[ii].p=+el.value||0;save();});
+    body.querySelectorAll('[data-delcat]').forEach(b=>b.onclick=()=>askConfirm('刪除整個分類？',()=>{r.menu.splice(+b.getAttribute('data-delcat'),1);reindexAll();save();draw();}));
+    body.querySelectorAll('[data-delit]').forEach(b=>b.onclick=()=>{const[ci,ii]=b.getAttribute('data-delit').split('|');r.menu[ci].items.splice(ii,1);reindexAll();save();draw();});
+    body.querySelectorAll('[data-additem]').forEach(b=>b.onclick=()=>{const ci=+b.getAttribute('data-additem');askPrompt('品項名稱：',(n)=>{r.menu[ci].items.push({n:n,p:0});reindexAll();save();draw();},{placeholder:'例如：赤肉羹'});});
+    body.querySelectorAll('[data-opt]').forEach(b=>b.onclick=()=>editOptions(r._index[b.getAttribute('data-opt')],draw));
+    body.querySelector('#addcat').onclick=()=>askPrompt('分類名稱：',(n)=>{r.menu.push({cat:n,items:[]});reindexAll();save();draw();},{placeholder:'例如：湯類'});
+  };
+  footer.innerHTML=`<button class="btn" id="done" style="flex:1">完成</button>`;
+  footer.querySelector('#done').onclick=()=>{reindexAll();save();close();};
+  draw();
+}
+function editOptions(item,after){const{body,close}=sheet('選項設定 · '+item.n,after);
+  item.groups=item.groups||[];
+  const drawSafe=()=>{body.innerHTML=`<label class="settle" style="margin-bottom:14px"><span class="chk" id="ispot" style="${item.isPot?'background:var(--primary);border-color:var(--primary)':''}">${item.isPot?'✓':''}</span>此品項計入「數量型」低消（例如火鍋算 1 鍋）</label>
+    ${item.groups.map((g,gi)=>`<div class="adm-cat"><div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+      <input class="ni" data-gn="${gi}" value="${esc(g.name)}" style="flex:1;padding:8px 9px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);font-weight:700">
+      <button class="chip ${g.type==='single'?'on':''}" data-gt="${gi}">${g.type==='single'?'單選':'多選'}</button>
+      ${g.type==='single'?`<button class="chip ${g.required?'on':''}" data-gr="${gi}">${g.required?'必選':'非必'}</button>`:''}
+      <button class="mini-del" data-delg="${gi}">✕</button></div>
+      ${g.choices.map((c,ci)=>`<div class="adm-item"><input class="ni" data-cn="${gi}|${ci}" value="${esc(c.n)}">
+        <input class="pi tnum" data-cp="${gi}|${ci}" type="number" value="${c.p||0}">
+        <button class="mini-del" data-delc="${gi}|${ci}">✕</button></div>`).join('')}
+      <button class="sbtn" data-addc="${gi}" style="width:100%;margin-top:8px;padding:8px">＋ 選項</button></div>`).join('')}
+    <button class="sbtn" data-addg="single" style="width:100%;padding:11px;margin-bottom:8px">＋ 單選群組（如大小、口味）</button>
+    <button class="sbtn" data-addg="multi" style="width:100%;padding:11px">＋ 多選群組（如加點）</button>`;
+    body.querySelector('#ispot').onclick=()=>{item.isPot=!item.isPot;save();drawSafe();};
+    body.querySelectorAll('[data-gn]').forEach(el=>el.onchange=()=>{item.groups[+el.getAttribute('data-gn')].name=el.value;save();});
+    body.querySelectorAll('[data-gt]').forEach(b=>b.onclick=()=>{const g=item.groups[+b.getAttribute('data-gt')];g.type=g.type==='single'?'multi':'single';save();drawSafe();});
+    body.querySelectorAll('[data-gr]').forEach(b=>b.onclick=()=>{const g=item.groups[+b.getAttribute('data-gr')];g.required=!g.required;save();drawSafe();});
+    body.querySelectorAll('[data-delg]').forEach(b=>b.onclick=()=>{item.groups.splice(+b.getAttribute('data-delg'),1);save();drawSafe();});
+    body.querySelectorAll('[data-cn]').forEach(el=>el.onchange=()=>{const[gi,ci]=el.getAttribute('data-cn').split('|');item.groups[gi].choices[ci].n=el.value;save();});
+    body.querySelectorAll('[data-cp]').forEach(el=>el.onchange=()=>{const[gi,ci]=el.getAttribute('data-cp').split('|');item.groups[gi].choices[ci].p=+el.value||0;save();});
+    body.querySelectorAll('[data-delc]').forEach(b=>b.onclick=()=>{const[gi,ci]=b.getAttribute('data-delc').split('|');item.groups[gi].choices.splice(ci,1);save();drawSafe();});
+    body.querySelectorAll('[data-addc]').forEach(b=>b.onclick=()=>{item.groups[+b.getAttribute('data-addc')].choices.push({n:'新選項',p:0});save();drawSafe();});
+    body.querySelectorAll('[data-addg]').forEach(b=>b.onclick=()=>{const type=b.getAttribute('data-addg');item.groups.push({id:'g'+uid(),name:type==='single'?'新單選':'加點',type,required:false,choices:[]});save();drawSafe();});
+  };
+  drawSafe();
+}
+
+/* ============================================================ 共用元件 ============================================================ */
+let bottomCfg=null;
+function bottomBar(cfg){bottomCfg=cfg;let bar=document.querySelector('.bar-bottom');
+  if(!bar){bar=document.createElement('div');bar.className='bar-bottom';document.body.appendChild(bar);}
+  bar.innerHTML=`<div class="info"><div class="l1">${esc(cfg.l1||'')}</div><div class="l2 tnum">${esc(cfg.l2||'')}</div></div>
+    ${cfg.btn2?`<button class="btn ghost" id="bbtn2">${esc(cfg.btn2)}</button>`:''}
+    <button class="btn" id="bbtn" ${cfg.disabled?'disabled':''}>${esc(cfg.btn)}</button>`;
+  $('#bbtn').onclick=cfg.onClick;if(cfg.btn2)$('#bbtn2').onclick=cfg.onClick2;bar.style.display='flex';}
+function updateBottom(){if(!bottomCfg)return;const o=getEditing();if(!o)return;
+  if(o.step==='people'){bottomCfg.l2=o.participants.length+' 人';bottomCfg.disabled=o.participants.length===0;
+    const bar=document.querySelector('.bar-bottom');if(bar){bar.querySelector('.l2').textContent=bottomCfg.l2;bar.querySelector('#bbtn').disabled=bottomCfg.disabled;}}}
+function hideBottom(){const b=document.querySelector('.bar-bottom');if(b)b.style.display='none';}
+
+function sheet(title,onClose,withFooter){const root=$('#modalRoot');const ov=document.createElement('div');ov.className='overlay';
+  ov.innerHTML=`<div class="sheet"><div class="sheet-hd"><div class="t">${esc(title)}</div><button class="x">×</button></div>
+    <div class="sheet-bd"></div>${withFooter?'<div class="sheet-ft"></div>':''}</div>`;
+  root.appendChild(ov);const close=()=>{ov.remove();if(onClose)onClose();};
+  ov.querySelector('.x').onclick=close;ov.onclick=e=>{if(e.target===ov)close();};
+  return{body:ov.querySelector('.sheet-bd'),footer:ov.querySelector('.sheet-ft'),close};}
+
+function askConfirm(msg,onYes,opts){opts=opts||{};const root=$('#modalRoot');const ov=document.createElement('div');ov.className='overlay dialog-ov';
+  ov.innerHTML=`<div class="dialog"><div class="dlg-msg">${esc(msg)}</div><div class="dlg-btns">
+    <button class="dlg-b cancel">${esc(opts.cancelText||'取消')}</button>
+    <button class="dlg-b ok ${opts.danger===false?'':'danger'}">${esc(opts.okText||'確定')}</button></div></div>`;
+  root.appendChild(ov);const close=()=>ov.remove();
+  ov.querySelector('.cancel').onclick=close;ov.querySelector('.ok').onclick=()=>{close();onYes&&onYes();};
+  ov.onclick=e=>{if(e.target===ov)close();};}
+function askPrompt(msg,onValue,opts){opts=opts||{};const root=$('#modalRoot');const ov=document.createElement('div');ov.className='overlay dialog-ov';
+  ov.innerHTML=`<div class="dialog"><div class="dlg-msg">${esc(msg)}</div>
+    <input class="dlg-input" placeholder="${esc(opts.placeholder||'')}" value="${esc(opts.initial||'')}">
+    <div class="dlg-btns"><button class="dlg-b cancel">取消</button><button class="dlg-b ok">確定</button></div></div>`;
+  root.appendChild(ov);const inp=ov.querySelector('.dlg-input');setTimeout(()=>{try{inp.focus();}catch(e){}},30);
+  const close=()=>ov.remove();const submit=()=>{const v=inp.value.trim();close();if(v)onValue&&onValue(v);};
+  ov.querySelector('.cancel').onclick=close;ov.querySelector('.ok').onclick=submit;
+  inp.onkeydown=e=>{if(e.key==='Enter')submit();};ov.onclick=e=>{if(e.target===ov)close();};}
+function copyText(str){const done=()=>toast('已複製，可貼到 LINE');
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(str).then(done).catch(fallback);else fallback();
+  function fallback(){const ta=document.createElement('textarea');ta.value=str;ta.style.position='fixed';ta.style.opacity=0;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(e){toast('複製失敗，請長按選取');}ta.remove();}}
+
+/* 登入畫面 */
+function showLogin(msg){hideBottom();document.querySelectorAll('.overlay').forEach(x=>x.remove());setSyncUI('','');
+  $('#app').innerHTML=`<div class="boot"><div class="login-card">
+    <div class="t"><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--primary);margin-right:8px;vertical-align:middle"></span>病房訂餐</div>
+    <div class="s">請使用已授權的 Google 帳號登入</div>
+    ${msg?`<div class="err" id="loginMsg">${esc(msg)}</div>`:''}
+    <a class="gbtn" id="bLogin" href="${esc(googleURL())}"><span class="g">G</span>使用 Google 登入</a></div></div>`;}
+
+/* 啟動：處理登入回跳 → 驗證帳號 → 從 Supabase 載入，完成前不渲染主畫面 */
+async function boot(){
+  $('#app').innerHTML='<div class="boot"><div>載入資料中…</div></div>';
+  const r=readAuthRedirect();
+  if(r.error){storeSession(null);return showLogin(/403|權限|not allowed/i.test(r.error)?'此帳號沒有使用權限':'登入失敗：'+r.error);}
+  if(r.session)storeSession(r.session);else auth.session=loadSession();
+  if(!auth.session)return showLogin();
+  try{
+    const u=await authFetch('user',{token:await accessToken()});
+    storeSession(Object.assign({},auth.session,{email:u&&u.email}));
+    const ok=await sbFetch('rpc/am_i_allowed',{method:'POST',body:'{}'});
+    if(ok!==true)return signOut('此帳號（'+(u&&u.email||'')+'）沒有使用權限');
+    await loadAll();reindexAll();snapshotAll();sync.ready=true;render();
+  }catch(e){console.error('[boot]',e);
+    if(e.auth){storeSession(null);return showLogin('登入已失效，請重新登入');}
+    $('#app').innerHTML=`<div class="boot"><div style="font-weight:800;color:var(--ink)">無法連線到資料庫</div>
+      <div class="err">${esc(e.message||String(e))}</div><button class="btn" id="retry">重試</button></div>`;
+    $('#retry').onclick=boot;}
+}
+boot();
+</script>
+</body>
+</html>
