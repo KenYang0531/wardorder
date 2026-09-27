@@ -79,6 +79,15 @@ input::placeholder,textarea::placeholder{color:var(--faint);opacity:1}
 .o-meta b{color:var(--ink)}
 .o-foot{display:flex;justify-content:space-between;align-items:center;margin-top:11px;gap:8px}
 .o-del{border:none;background:none;color:var(--faint);font-size:var(--fs-l)}
+/* 進行中訂單：點卡片開啟，左滑露出刪除 */
+.o-swipe{position:relative;margin-bottom:11px;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.o-swipe .o-card{margin-bottom:0;box-shadow:none;position:relative;z-index:1;transition:transform .22s cubic-bezier(.2,.8,.2,1);touch-action:pan-y;cursor:pointer;user-select:none;-webkit-user-select:none}
+.o-swipe.dragging .o-card{transition:none}
+.o-swipe .o-card:active{background:var(--surface-2)}
+.o-del-act{position:absolute;top:0;right:0;bottom:0;width:88px;border:none;background:var(--danger);color:#fff;font-weight:800;font-size:var(--fs-l);visibility:hidden}
+.o-swipe.show-del .o-del-act{visibility:visible}
+.o-go{color:var(--faint);font-size:var(--fs-xl);line-height:1;margin-left:6px}
+.section-label .hint{font-weight:600;color:var(--faint);font-size:var(--fs-s)}
 
 /* Meal picker */
 .field{margin-bottom:16px}
@@ -183,6 +192,7 @@ input::placeholder,textarea::placeholder{color:var(--faint);opacity:1}
 .bar-bottom{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);
   padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:10px;max-width:600px;margin:0 auto}
 .bar-bottom .info{flex:1;min-width:0}
+.bar-bottom.no-info .btn{flex:1}
 .bar-bottom .info .l1{font-size:var(--fs-s);color:var(--muted);font-weight:700}
 .bar-bottom .info .l2{font-size:var(--fs-l);font-weight:800}
 .btn{border:none;border-radius:var(--radius-sm);padding:14px 20px;font-size:var(--fs-l);font-weight:800;background:var(--primary);color:var(--on-primary);white-space:nowrap}
@@ -510,24 +520,42 @@ function renderHomeList(w){
   const archived=state.orders.filter(o=>o.status==='archived');
   w.innerHTML=`
     <button class="bigbtn" id="bNew" style="margin-top:6px">＋ 新增訂單</button>
-    <div class="section-label">進行中的訂單（${active.length}）</div>
+    <div class="section-label"><span>進行中的訂單（${active.length}）</span>${active.length?'<span class="hint">← 左滑可刪除</span>':''}</div>
     ${active.length?active.map(o=>{
       const st=stageOf(o),r=findRest(o.restaurantId),ps=payers(o),settled=ps.filter(p=>o.pay[p.id]&&o.pay[p.id].settled).length;
-      return `<div class="o-card">
-        <div class="o-t"><span class="o-meal">${orderTitleHTML(o)}</span><span class="o-stage ${st.cls}">${st.t}</span></div>
+      return `<div class="o-swipe"><button class="o-del-act" data-del="${o.id}">刪除</button><div class="o-card" data-open="${o.id}" role="button" tabindex="0">
+        <div class="o-t"><span class="o-meal">${orderTitleHTML(o)}</span><span style="display:flex;align-items:center"><span class="o-stage ${st.cls}">${st.t}</span><span class="o-go">›</span></span></div>
         <div class="o-meta"><div class="o-rest">${r?esc(r.name):'尚未選餐廳'}</div>
           ${activeParts(o).length} 人訂餐　·　合計 <b class="tnum">${fmt(grandTotal(o))}</b>${ps.length?`　·　已結清 ${settled}/${ps.length}`:''}</div>
-        <div class="o-foot"><button class="o-del" data-del="${o.id}">刪除</button>
-          <button class="sbtn pri" data-open="${o.id}">開啟</button></div>
-      </div>`;}).join(''):`<div class="empty">目前沒有進行中的訂單<br>按上方「新增訂單」開始</div>`}
+      </div></div>`;}).join(''):`<div class="empty">目前沒有進行中的訂單<br>按上方「新增訂單」開始</div>`}
     <button class="link" id="bArch">查看已封存訂單（${archived.length}）→</button>
     <div class="acct">登入帳號 ${esc(auth.session&&auth.session.email||'')}　<button class="link" id="bLogout">登出</button></div>
   `;
   $('#bLogout').onclick=()=>askConfirm('確定要登出嗎？',()=>signOut(),{danger:false,okText:'登出'});
   $('#bNew').onclick=()=>{const o=newOrder();state.orders.unshift(o);state.editingId=o.id;state.screen='wizard';save();render();};
   $('#bArch').onclick=()=>{state.screen='archived';render();};
-  w.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{state.editingId=b.getAttribute('data-open');state.screen='wizard';render();});
+  bindOrderSwipe(w,id=>{state.editingId=id;state.screen='wizard';render();});
   w.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>askConfirm('刪除這筆訂單？無法復原。',()=>{state.orders=state.orders.filter(o=>o.id!==b.getAttribute('data-del'));save();render();}));
+}
+/* 卡片手勢：點一下開啟；左滑超過一半停在「刪除」；同時只開一張；上下捲動不受影響 */
+let swipeClose=null;  // 目前拉開那張卡片的關閉函式
+document.addEventListener('pointerdown',e=>{if(swipeClose&&!e.target.closest('.o-swipe.show-del'))swipeClose();},true);
+function bindOrderSwipe(w,onOpen){const W=88;let openSw=null;
+  const setX=(sw,x)=>{sw.querySelector('.o-card').style.transform=x?`translateX(${x}px)`:'';sw.classList.toggle('show-del',x<0);};
+  const closeOpen=()=>{if(openSw){setX(openSw,0);openSw=null;}swipeClose=null;};
+  w.querySelectorAll('.o-swipe').forEach(sw=>{const card=sw.querySelector('.o-card');let sx=0,sy=0,dx=0,down=false,lock=null,base=0,swiped=false;
+    card.addEventListener('pointerdown',e=>{if(e.button>0)return;down=true;sx=e.clientX;sy=e.clientY;dx=0;lock=null;base=openSw===sw?-W:0;});
+    card.addEventListener('pointermove',e=>{if(!down)return;const mx=e.clientX-sx,my=e.clientY-sy;
+      if(lock===null&&(Math.abs(mx)>8||Math.abs(my)>8)){lock=Math.abs(mx)>Math.abs(my)?'x':'y';
+        if(lock==='x'){sw.classList.add('dragging');if(openSw&&openSw!==sw)closeOpen();try{card.setPointerCapture(e.pointerId);}catch(_){}}}
+      if(lock==='x'){swiped=true;dx=Math.max(-W-24,Math.min(0,base+mx));setX(sw,dx);}});
+    const finish=()=>{if(!down)return;down=false;sw.classList.remove('dragging');
+      if(lock==='x'){if(dx<-W/2){setX(sw,-W);openSw=sw;swipeClose=closeOpen;}else{setX(sw,0);if(openSw===sw)openSw=null;}}};
+    card.addEventListener('pointerup',finish);
+    card.addEventListener('pointercancel',()=>{down=false;sw.classList.remove('dragging');setX(sw,openSw===sw?-W:0);});
+    card.addEventListener('click',()=>{if(swiped){swiped=false;return;}if(openSw){closeOpen();return;}onOpen(card.getAttribute('data-open'));});
+    card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onOpen(card.getAttribute('data-open'));}});
+  });
 }
 /* ---------- 已封存 ---------- */
 function renderArchived(w){
@@ -751,7 +779,6 @@ function personText(o){let s=`【分菜清單 · ${orderTitle(o)}】\n`;activePa
 function renderMoney(w){const o=getEditing();const ps=payers(o);
   ps.forEach(p=>{if(!o.pay[p.id])o.pay[p.id]={received:null,settled:false};});
   const totalDue=grandTotal(o),totalRecv=ps.reduce((s,p)=>s+(o.pay[p.id].received||0),0);
-  const totalChange=ps.reduce((s,p)=>{const r=o.pay[p.id].received;return s+(r!=null?Math.max(0,r-subtotal(p.id,o)):0);},0);
   const settled=ps.filter(p=>o.pay[p.id].settled).length;const paid=fullyPaid(o);
   w.innerHTML=`<div class="h1">收款結清</div><p class="sub">記錄每人收多少、預計找多少（不一定當下找）。全部結清後即可封存。</p>
     <div class="summary-strip"><div class="stat"><div class="k">總應收</div><div class="v tnum">${fmt(totalDue)}</div></div>
@@ -769,8 +796,7 @@ function renderMoney(w){const o=getEditing();const ps=payers(o);
   w.querySelectorAll('[data-recv]').forEach(inp=>inp.oninput=e=>{const id=inp.getAttribute('data-recv');const v=e.target.value.trim();const num=+v;
     o.pay[id].received=(v===''||isNaN(num))?null:Math.round(num);save();updateMoneyRow(id,o);});
   w.querySelectorAll('[data-settle]').forEach(el=>el.onclick=()=>{const id=el.getAttribute('data-settle');o.pay[id].settled=!o.pay[id].settled;save();renderMoney(w);});
-  bottomBar({l1:'預計找零合計 · 已結清 '+settled+'/'+ps.length,l2:fmt(totalChange),
-    btn2:'回列表',onClick2:goHome,
+  bottomBar({btn2:'回列表',onClick2:goHome,
     btn:paid?'封存訂單':'尚有未結清',disabled:!paid,
     onClick:()=>{if(paid){o.status='archived';o.archivedAt=Date.now();state.editingId=null;state.screen='home';save();render();toast('訂單已封存');}}});
 }
@@ -780,9 +806,7 @@ function updateMoneyRow(id,o){o=o||getEditing();
   if(cell){let cc='zero',ct='—';if(ch!=null){ct=fmt(ch);cc=ch>0?'pos':(ch<0?'neg':'zero');}
     cell.className='v '+cc+' tnum';cell.textContent=ch!=null&&ch<0?'缺'+fmt(-ch):ct;}
   const ps=payers(o);const totalRecv=ps.reduce((s,p)=>s+((o.pay[p.id]&&o.pay[p.id].received)||0),0);
-  const totalChange=ps.reduce((s,p)=>{const r=o.pay[p.id]&&o.pay[p.id].received;return s+(r!=null?Math.max(0,r-subtotal(p.id,o)):0);},0);
   const tr=document.getElementById('mTotRecv');if(tr)tr.textContent=fmt(totalRecv);
-  const bl2=document.querySelector('.bar-bottom .l2');if(bl2)bl2.textContent=fmt(totalChange);
 }
 
 /* ============================================================ 餐廳後台 ============================================================ */
@@ -869,10 +893,10 @@ function editOptions(item,after){const{body,close}=sheet('選項設定 · '+item
 let bottomCfg=null;
 function bottomBar(cfg){bottomCfg=cfg;let bar=document.querySelector('.bar-bottom');
   if(!bar){bar=document.createElement('div');bar.className='bar-bottom';document.body.appendChild(bar);}
-  bar.innerHTML=`<div class="info"><div class="l1">${esc(cfg.l1||'')}</div><div class="l2 tnum">${esc(cfg.l2||'')}</div></div>
+  bar.innerHTML=`${cfg.l1||cfg.l2?`<div class="info"><div class="l1">${esc(cfg.l1||'')}</div><div class="l2 tnum">${esc(cfg.l2||'')}</div></div>`:''}
     ${cfg.btn2?`<button class="btn ghost" id="bbtn2">${esc(cfg.btn2)}</button>`:''}
     <button class="btn" id="bbtn" ${cfg.disabled?'disabled':''}>${esc(cfg.btn)}</button>`;
-  $('#bbtn').onclick=cfg.onClick;if(cfg.btn2)$('#bbtn2').onclick=cfg.onClick2;bar.style.display='flex';}
+  $('#bbtn').onclick=cfg.onClick;if(cfg.btn2)$('#bbtn2').onclick=cfg.onClick2;bar.classList.toggle('no-info',!(cfg.l1||cfg.l2));bar.style.display='flex';}
 function updateBottom(){if(!bottomCfg)return;const o=getEditing();if(!o)return;
   if(o.step==='people'){bottomCfg.l2=o.participants.length+' 人';bottomCfg.disabled=o.participants.length===0;
     const bar=document.querySelector('.bar-bottom');if(bar){bar.querySelector('.l2').textContent=bottomCfg.l2;bar.querySelector('#bbtn').disabled=bottomCfg.disabled;}}}
