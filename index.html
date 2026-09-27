@@ -52,16 +52,17 @@ body.kb-open .sheet-bd{padding-bottom:45vh}
 .brand .dot{width:11px;height:11px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 4px var(--primary-soft)}
 .brand small{font-weight:600;color:var(--muted);letter-spacing:0}
 .hdr-menu{border:1px solid var(--line-strong);background:var(--surface);color:var(--muted);border-radius:9px;padding:6px 11px;font-size:var(--fs-s);font-weight:600}
-.steps{display:flex;gap:2px;margin-top:11px;overflow-x:auto;scrollbar-width:none}
+.steps{display:flex;justify-content:space-between;gap:0;margin-top:11px;overflow-x:auto;scrollbar-width:none}
 .steps::-webkit-scrollbar{display:none}
-.step{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:5px 4px;color:var(--faint);font-size:var(--fs-s);font-weight:600;white-space:nowrap;background:none;border:none}
+.step{flex:0 0 auto;display:flex;align-items:center;gap:4px;padding:5px 2px;color:var(--faint);font-size:var(--fs-s);font-weight:600;white-space:nowrap;background:none;border:none}
 .step .n{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--line);color:var(--muted);font-size:var(--fs-s);font-weight:700}
 .step.done{color:var(--primary-deep)} .step.done .n{background:var(--primary-soft);color:var(--primary-deep)}
 .step.active{color:var(--ink)} .step.active .n{background:var(--primary);color:var(--on-primary)}
 .step.clickable{cursor:pointer} .step .sep{color:var(--line-strong)}
 
 .wrap{padding:16px}
-.h1{font-size:var(--fs-xl);font-weight:800;margin:2px 0 3px}
+.h1{font-size:var(--fs-xl);font-weight:800;margin:2px 0 14px}
+.h1+.sub{margin-top:-10px}
 .sub{color:var(--muted);font-size:var(--fs-m);margin:0 0 16px}
 .section-label{font-size:var(--fs-m);font-weight:700;color:var(--muted);margin:20px 2px 8px;display:flex;justify-content:space-between;align-items:center}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
@@ -124,7 +125,8 @@ body.kb-open .sheet-bd{padding-bottom:45vh}
 .r-card .meta{color:var(--muted);font-size:var(--fs-m);margin-top:5px;line-height:1.7}
 .r-card .meta b{color:var(--ink);font-weight:700}
 .favpill{position:absolute;top:14px;right:14px;background:var(--primary-soft);color:var(--primary-deep);font-size:var(--fs-s);font-weight:700;padding:4px 10px;border-radius:20px}
-.r-open{display:inline-block;font-size:var(--fs-s);font-weight:700;color:var(--good);background:var(--good-soft);padding:2px 8px;border-radius:6px;margin-left:6px}
+.r-card.sel{border:2px solid var(--primary);background:var(--primary-soft);padding:14px 15px}
+.r-sel{display:inline-block;font-size:var(--fs-s);font-weight:800;color:var(--on-primary);background:var(--primary);padding:2px 8px;border-radius:6px;margin-left:8px;vertical-align:2px}
 
 /* Order screen */
 .mini-r{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px}
@@ -501,7 +503,7 @@ function headerHTML(){
     if(s[0]===o.step)cls.push('active');else if(reached)cls.push('done');
     if(reached&&s[0]!==o.step)cls.push('clickable');
     const inner=`<span class="n">${reached&&s[0]!==o.step?'✓':(i+1)}</span>${s[1]}`;
-    const sep=i<STEPS.length-1?'<span class="sep step">›</span>':'';
+    const sep='';
     return `<button class="${cls.join(' ')}" data-go="${reached?s[0]:''}">${inner}</button>${sep}`;}).join('');
   return `<div class="hdr"><div class="hdr-top">
     <button class="brand" id="bHome"><span class="dot"></span>病房訂餐 <small class="tnum">${o.meal?esc(orderTitle(o)):'新訂單'}</small></button>
@@ -590,7 +592,7 @@ function viewArchived(o){const{body}=sheet('訂單明細 · '+orderTitle(o),null
 
 /* ---------- 步驟1 餐別 ---------- */
 function renderMeal(w){const o=getEditing();
-  w.innerHTML=`<div class="h1">新增訂單</div><p class="sub">選擇中餐或晚餐，用來篩掉當下沒營業的餐廳。</p>
+  w.innerHTML=`<div class="h1">新增訂單</div>
     <div class="field"><label>訂餐日期</label><input type="date" id="dt" value="${o.date}"></div>
     <div class="field"><label>餐別</label><div class="meal-grid">
       <button class="meal ${o.meal==='lunch'?'sel':''}" data-m="lunch"><div class="emo">☀︎</div><div class="t">中餐</div><div class="tm">用 12:00 篩選營業中</div></button>
@@ -604,7 +606,7 @@ function renderMeal(w){const o=getEditing();
 function renderPeople(w){const o=getEditing(),q=state.ui.peopleQuery.trim();
   const chosen=new Set(o.participants.map(p=>p.id));
   const list=state.roster.filter(p=>!q||p.name.includes(q));
-  w.innerHTML=`<div class="h1">選擇訂餐同仁</div><p class="sub">勾選今天要訂餐的人。自帶便當者仍可勾選。</p>
+  w.innerHTML=`<div class="h1">選擇訂餐同仁</div>
     <div class="searchbar"><input id="pq" placeholder="搜尋姓名…" value="${esc(state.ui.peopleQuery)}"><button class="sbtn" id="mng">管理名單</button></div>
     <div class="list">${list.map(p=>`<div class="p-row ${chosen.has(p.id)?'on':''}" data-id="${p.id}">
       <div class="chk">${chosen.has(p.id)?'✓':''}</div><div class="p-name">${esc(p.name)}</div>
@@ -655,15 +657,16 @@ function openRoster(onClose){
 function renderRestaurant(w){const o=getEditing(),t=mealTime(o.meal);
   const favCount=r=>o.participants.filter(p=>p.favorites&&p.favorites.includes(r.id)).length;
   const open=state.restaurants.filter(r=>isOpenAt(r,t));const closedList=state.restaurants.filter(r=>!isOpenAt(r,t));
-  open.sort((a,b)=>favCount(b)-favCount(a));
+  open.sort((a,b)=>(b.id===o.restaurantId)-(a.id===o.restaurantId)||favCount(b)-favCount(a));  // 已選的店排最前
   const norm=x=>(x||'').toLowerCase().replace(/[\s（）()・·\-]/g,'');
   const hit=(r,q)=>!q||norm(r.name).includes(q)||norm(r.address).includes(q)||norm(r.phone).includes(q);
   const card=r=>{const fc=favCount(r);const mo=r.minOrder.type==='amount'?`滿 ${fmt(r.minOrder.value)}`:`${r.minOrder.value} ${r.minOrder.unit}以上`;
-      return `<button class="r-card" data-r="${r.id}">${fc?`<span class="favpill">♥ ${fc} 位喜愛</span>`:''}
-        <div class="rn">${esc(r.name)}<span class="r-open">營業中</span></div>
+      const sel=o.restaurantId===r.id;
+      return `<button class="r-card ${sel?'sel':''}" data-r="${r.id}">${fc?`<span class="favpill">♥ ${fc} 位喜愛</span>`:''}
+        <div class="rn">${esc(r.name)}${sel?'<span class="r-sel">✓ 目前選擇</span>':''}</div>
         <div class="meta">營業 ${r.open}–${r.close}${r.hoursNote?` <span style="color:var(--warn)">・${esc(r.hoursNote)}</span>`:''}<br>
         外送門檻 <b>${mo}</b> · 電話 ${esc(r.phone)}</div></button>`;};
-  w.innerHTML=`<div class="h1">選擇餐廳</div><p class="sub">${mealLabel(o.meal)}（${t}）· 依今日訂餐同仁喜好排序${closedList.length?` · 已隱藏 ${closedList.length} 家未營業`:''}</p>
+  w.innerHTML=`<div class="h1">選擇餐廳</div>
     <div class="searchbar"><input id="rq" type="search" placeholder="搜尋餐廳名稱、地址或電話…" value="${esc(state.ui.restQuery||'')}" autocomplete="off" enterkeyhint="search"></div>
     <div id="rlist"></div>`;
   // 只重畫清單、不重畫輸入框（避免游標跳掉）
@@ -696,7 +699,7 @@ function renderOrder(w){const o=getEditing(),r=findRest(o.restaurantId),ms=minSt
         ${items.map(l=>`<div class="li"><div class="li-main"><div class="li-name">${esc(l.name)}${l.qty>1?' ×'+l.qty:''}</div>
           ${l.opt?`<div class="li-opt">${esc(l.opt)}</div>`:''}${l.note?`<div class="li-note">備註 ${esc(l.note)}</div>`:''}</div>
           <div class="li-price tnum">${fmt(l.total)}</div><button class="li-del" data-del="${p.id}|${l.uid}">✕</button></div>`).join('')}
-        <button class="addbtn" data-add="${p.id}">＋ 為 ${esc(p.name)} 新增餐點</button>`}
+        <button class="addbtn" data-add="${p.id}">＋ 新增餐點</button>`}
       </div>`;}).join('')}`;
   $('#chgR').onclick=()=>{if(hasItems(o))askConfirm('換餐廳會清除目前所有點餐內容，確定要換嗎？',()=>{clearOrderItems(o);save();goStep('restaurant');});else goStep('restaurant');};
   $('#addPpl').onclick=()=>openPeoplePicker(()=>renderOrder(w));
@@ -778,7 +781,7 @@ function renderSummary(w){const o=getEditing(),r=findRest(o.restaurantId),view=s
   const personView=()=>activeParts(o).filter(p=>(o.items[p.id]||[]).length).map(p=>`<div class="list" style="margin-bottom:12px">
     <div class="store-head" style="display:flex;justify-content:space-between;align-items:center"><div class="rn" style="font-size:var(--fs-l)">${esc(p.name)}</div><div class="tnum" style="font-weight:800">${fmt(subtotal(p.id,o))}</div></div>
     ${(o.items[p.id]).map(l=>`<div class="agg"><div class="qty tnum">${l.qty}×</div><div class="an">${esc(l.name)}${l.opt?`<div class="opt">${esc(l.opt)}</div>`:''}${l.note?`<div class="opt" style="color:var(--warn)">備註 ${esc(l.note)}</div>`:''}</div><div class="tnum" style="font-weight:700">${fmt(l.total)}</div></div>`).join('')}</div>`).join('')+`<button class="copybtn" id="copy">複製分菜清單（誰點什麼）</button>`;
-  w.innerHTML=`<div class="h1">訂單清單</div><p class="sub">給店家的是合併後的下單量；分菜清單方便到貨分給每人。不訂餐者不會出現。</p>
+  w.innerHTML=`<div class="h1">訂單清單</div>
     <div class="seg"><button class="${view==='store'?'on':''}" data-v="store">給店家（彙總）</button><button class="${view==='person'?'on':''}" data-v="person">分菜（每人）</button></div>
     ${view==='store'?storeView():personView()}`;
   w.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{state.ui.summaryView=b.dataset.v;renderSummary(w);});
@@ -795,7 +798,7 @@ function renderMoney(w){const o=getEditing();const ps=payers(o);
   ps.forEach(p=>{if(!o.pay[p.id])o.pay[p.id]={received:null,settled:false};});
   const totalDue=grandTotal(o),totalRecv=ps.reduce((s,p)=>s+(o.pay[p.id].received||0),0);
   const settled=ps.filter(p=>o.pay[p.id].settled).length;const paid=fullyPaid(o);
-  w.innerHTML=`<div class="h1">收款結清</div><p class="sub">記錄每人收多少、預計找多少（不一定當下找）。全部結清後即可封存。</p>
+  w.innerHTML=`<div class="h1">收款結清</div>
     <div class="summary-strip"><div class="stat"><div class="k">總應收</div><div class="v tnum">${fmt(totalDue)}</div></div>
       <div class="stat"><div class="k">總實收</div><div class="v tnum" id="mTotRecv">${fmt(totalRecv)}</div></div>
       <div class="stat"><div class="k">已結清</div><div class="v tnum">${settled}/${ps.length}</div></div></div>
