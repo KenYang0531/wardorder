@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https://stxextvimtstwsugvjbu.supabase.co; img-src 'self' data:; font-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
-<title>病房訂餐</title>
+<title>MICU3 訂餐</title>
 <style>
 :root{
   /* 字級只有四級：s 註記/標籤、m 次要文字/連結、l 內文/按鈕/輸入框（iOS 需 ≥16px）、xl 頁面標題/大數字 */
@@ -50,10 +50,11 @@ body.kb-open .sheet-bd{padding-bottom:45vh}
 .hdr{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line);
   padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top))}
 .hdr-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.brand{display:flex;align-items:center;gap:9px;font-weight:800;letter-spacing:.5px;background:none;border:none;color:var(--ink);font-size:var(--fs-l)}
+.brand{display:flex;align-items:center;gap:9px;font-weight:800;letter-spacing:.5px;background:none;border:none;color:var(--ink);font-size:var(--fs-l);white-space:nowrap;min-width:0;padding-left:0;padding-right:0}
 .brand .dot{width:11px;height:11px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 4px var(--primary-soft)}
-.brand small{font-weight:600;color:var(--muted);letter-spacing:0}
-.hdr-menu{border:1px solid var(--line-strong);background:var(--surface);color:var(--muted);border-radius:9px;padding:6px 11px;font-size:var(--fs-s);font-weight:600}
+.brand small{font-weight:600;color:var(--muted);letter-spacing:0;overflow:hidden;text-overflow:ellipsis;min-width:0}
+@media(max-width:380px){.brand{gap:6px}.hdr-menu .long{display:none}}
+.hdr-menu{border:1px solid var(--line-strong);background:var(--surface);color:var(--muted);border-radius:9px;padding:6px 11px;font-size:var(--fs-s);font-weight:600;white-space:nowrap;flex:0 0 auto}
 .steps{display:flex;justify-content:space-between;gap:0;margin-top:11px;overflow-x:auto;scrollbar-width:none}
 .steps::-webkit-scrollbar{display:none}
 .step{flex:0 0 auto;display:flex;align-items:center;gap:4px;padding:5px 2px;color:var(--faint);font-size:var(--fs-s);font-weight:600;white-space:nowrap;background:none;border:none}
@@ -263,6 +264,8 @@ body.kb-open .sheet-bd{padding-bottom:45vh}
 .lbl2{font-size:var(--fs-s);font-weight:800;color:var(--muted);margin:14px 0 6px}
 .mini-del{border:none;background:none;color:var(--danger);font-size:var(--fs-l);padding:0 3px}
 .rs-card{padding:11px 12px;margin-bottom:9px}
+.day-row{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:8px}
+.day-b{text-align:center;padding:9px 0;min-width:0}
 .rs-top{display:flex;align-items:center;gap:12px}
 .rs-name{width:7.5em;flex:0 0 auto;border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;font-weight:600}
 .rs-no{display:flex;align-items:center;gap:7px;font-weight:700;font-size:var(--fs-m);color:var(--muted);cursor:pointer;user-select:none}
@@ -389,9 +392,9 @@ const TABLES={
     fromRow:r=>({id:safeId(r.id),name:String(r.name||''),bringOwn:!!r.bring_own,favorites:(r.favorites||[]).map(safeId)})},
   restaurants:{list:()=>state.restaurants,
     toRow:(r,i)=>({id:r.id,name:r.name,phone:r.phone||'',address:r.address||'',open_time:r.open,close_time:r.close,
-      hours_note:r.hoursNote||null,min_order:r.minOrder,note:r.note||'',menu:r.menu,sort:i+1}),
+      hours_note:r.hoursNote||null,min_order:r.minOrder,note:r.note||'',menu:r.menu,open_days:normDays(r.openDays),sort:i+1}),
     fromRow:r=>{const o={id:safeId(r.id),name:String(r.name||''),phone:r.phone||'',address:r.address||'',open:r.open_time,close:r.close_time,
-      minOrder:r.min_order||{type:'amount',value:0},note:r.note||'',menu:r.menu||[]};if(r.hours_note)o.hoursNote=r.hours_note;return o;}},
+      minOrder:r.min_order||{type:'amount',value:0},note:r.note||'',menu:r.menu||[],openDays:normDays(r.open_days)};if(r.hours_note)o.hoursNote=r.hours_note;return o;}},
   orders:{list:()=>state.orders,
     toRow:o=>({id:o.id,status:o.status,archived_at:toISO(o.archivedAt),meal:o.meal||null,order_date:o.date||todayISO(),
       restaurant_id:o.restaurantId||null,step:o.step,reached:o.reached||[],participants:o.participants||[],items:o.items||{},pay:o.pay||{},
@@ -456,6 +459,14 @@ const esc=s=>(s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;
 const fmt=n=>'$'+Math.round(n).toLocaleString('en-US');
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1600);}
 const timeToMin=h=>{const[a,b]=h.split(':').map(Number);return a*60+b;};
+/* 營業日：0=週日 … 6=週六（同 Date.getDay()） */
+const ALL_DAYS=[0,1,2,3,4,5,6];
+const DAY_LABEL=['日','一','二','三','四','五','六'];
+const normDays=d=>{const a=[...new Set((Array.isArray(d)?d:ALL_DAYS).map(Number).filter(x=>x>=0&&x<=6))].sort();return a.length?a:ALL_DAYS.slice();};
+const weekdayOf=iso=>{const m=/^(\d{4})-(\d\d)-(\d\d)$/.exec(iso||'');return m?new Date(+m[1],+m[2]-1,+m[3]).getDay():new Date().getDay();};
+const isOpenOn=(r,iso)=>normDays(r.openDays).includes(weekdayOf(iso));
+const closedDaysText=r=>{const d=normDays(r.openDays);if(d.length===7)return'';const off=ALL_DAYS.filter(x=>!d.includes(x));
+  return '週'+[1,2,3,4,5,6,0].filter(x=>off.includes(x)).map(x=>DAY_LABEL[x]).join('、')+'公休';};
 function isOpenAt(r,h){const t=timeToMin(h),o=timeToMin(r.open),c=timeToMin(r.close);return c>o?(t>=o&&t<=c):(t>=o||t<=c);}
 const mealTime=m=>m==='lunch'?'12:00':'19:00';
 const mealLabel=m=>m==='lunch'?'中餐':'晚餐';
@@ -505,7 +516,7 @@ function render(){
 function headerHTML(){
   if(state.screen==='home'||state.screen==='archived'){
     return `<div class="hdr"><div class="hdr-top">
-      <button class="brand" id="bHome"><span class="dot"></span>病房訂餐</button>
+      <button class="brand" id="bHome"><span class="dot"></span>MICU3 訂餐</button>
       <div style="display:flex;gap:8px"><button class="hdr-menu" id="bRoster">名單管理</button><button class="hdr-menu" id="bAdmin">餐廳後台</button></div></div></div>`;
   }
   const o=getEditing();
@@ -516,8 +527,8 @@ function headerHTML(){
     const sep='';
     return `<button class="${cls.join(' ')}" data-go="${reached?s[0]:''}">${inner}</button>${sep}`;}).join('');
   return `<div class="hdr"><div class="hdr-top">
-    <button class="brand" id="bHome"><span class="dot"></span>病房訂餐 <small class="tnum">${o.meal?esc(orderTitle(o)):'新訂單'}</small></button>
-    <button class="hdr-menu" id="bHome2">← 訂單列表</button></div>
+    <button class="brand" id="bHome"><span class="dot"></span>MICU3 訂餐 <small class="tnum">${o.meal?esc(orderTitle(o)):'新訂單'}</small></button>
+    <button class="hdr-menu" id="bHome2">← <span class="long">訂單</span>列表</button></div>
     <div class="steps">${steps}</div></div>`;
 }
 function bindHeader(){
@@ -666,7 +677,8 @@ function openRoster(onClose){
 /* ---------- 步驟3 選餐廳 ---------- */
 function renderRestaurant(w){const o=getEditing(),t=mealTime(o.meal);
   const favCount=r=>o.participants.filter(p=>p.favorites&&p.favorites.includes(r.id)).length;
-  const open=state.restaurants.filter(r=>isOpenAt(r,t));const closedList=state.restaurants.filter(r=>!isOpenAt(r,t));
+  const avail=r=>isOpenAt(r,t)&&isOpenOn(r,o.date);
+  const open=state.restaurants.filter(avail);const closedList=state.restaurants.filter(r=>!avail(r));
   open.sort((a,b)=>(b.id===o.restaurantId)-(a.id===o.restaurantId)||favCount(b)-favCount(a));  // 已選的店排最前
   const norm=x=>(x||'').toLowerCase().replace(/[\s（）()・·\-]/g,'');
   const hit=(r,q)=>!q||norm(r.name).includes(q)||norm(r.address).includes(q)||norm(r.phone).includes(q);
@@ -674,7 +686,7 @@ function renderRestaurant(w){const o=getEditing(),t=mealTime(o.meal);
       const sel=o.restaurantId===r.id;
       return `<button class="r-card ${sel?'sel':''}" data-r="${r.id}">${fc?`<span class="favpill">♥ ${fc} 位喜愛</span>`:''}
         <div class="rn">${esc(r.name)}${sel?'<span class="r-sel">✓ 目前選擇</span>':''}</div>
-        <div class="meta">營業 ${esc(r.open)}–${esc(r.close)}${r.hoursNote?` <span style="color:var(--warn)">・${esc(r.hoursNote)}</span>`:''}<br>
+        <div class="meta">營業 ${esc(r.open)}–${esc(r.close)}${closedDaysText(r)?` <span style="color:var(--muted)">・${closedDaysText(r)}</span>`:''}${r.hoursNote?` <span style="color:var(--warn)">・${esc(r.hoursNote)}</span>`:''}<br>
         外送門檻 <b>${mo}</b> · 電話 ${esc(r.phone)}</div></button>`;};
   w.innerHTML=`<div class="h1">選擇餐廳</div>
     <div class="searchbar"><input id="rq" type="search" placeholder="搜尋餐廳名稱、地址或電話…" value="${esc(state.ui.restQuery||'')}" autocomplete="off" enterkeyhint="search"></div>
@@ -683,7 +695,7 @@ function renderRestaurant(w){const o=getEditing(),t=mealTime(o.meal);
   const drawList=()=>{const q=norm(state.ui.restQuery);const list=open.filter(r=>hit(r,q));
     const hiddenHits=q?closedList.filter(r=>hit(r,q)):[];
     $('#rlist').innerHTML=list.map(card).join('')||`<div class="empty">${q?`找不到符合「${esc(state.ui.restQuery.trim())}」的營業中餐廳`:'此時段沒有營業中的餐廳'}</div>`;
-    if(hiddenHits.length)$('#rlist').insertAdjacentHTML('beforeend',`<p class="sub" style="text-align:center">另有 ${hiddenHits.length} 家符合但此時段未營業：${hiddenHits.map(r=>esc(r.name)).join('、')}</p>`);
+    if(hiddenHits.length)$('#rlist').insertAdjacentHTML('beforeend',`<p class="sub" style="text-align:center">另有 ${hiddenHits.length} 家符合但當天或此時段未營業：${hiddenHits.map(r=>esc(r.name)).join('、')}</p>`);
     $('#rlist').querySelectorAll('.r-card').forEach(el=>el.onclick=()=>{const rid=el.dataset.r;state.ui.restQuery='';
       if(o.restaurantId&&o.restaurantId!==rid&&hasItems(o)){askConfirm('換成其他餐廳會清除目前所有點餐內容，確定嗎？',()=>{clearOrderItems(o);o.restaurantId=rid;save();goStep('order');});return;}
       o.restaurantId=rid;save();goStep('order');});};
@@ -840,12 +852,12 @@ function updateMoneyRow(id,o){o=o||getEditing();
 /* ============================================================ 餐廳後台 ============================================================ */
 function openAdmin(){const{body,close}=sheet('餐廳後台',null);
   const draw=()=>{if(!document.body.contains(body))return;body.innerHTML=`<p class="sub">修改或新增餐廳與菜單。資料存在雲端資料庫，變更會自動儲存。</p>
-    ${state.restaurants.map(r=>`<div class="adm-r"><div class="an">${esc(r.name)}<div class="ac">${r.menu.reduce((s,c)=>s+c.items.length,0)} 項 · ${esc(r.open)}–${esc(r.close)}</div></div>
+    ${state.restaurants.map(r=>`<div class="adm-r"><div class="an">${esc(r.name)}<div class="ac">${r.menu.reduce((s,c)=>s+c.items.length,0)} 項 · ${esc(r.open)}–${esc(r.close)}${closedDaysText(r)?' · '+closedDaysText(r):''}</div></div>
       <button class="sbtn" data-edit="${r.id}">編輯</button><button class="mini-del" data-del="${r.id}">✕</button></div>`).join('')||'<div class="empty">尚無餐廳</div>'}
     <button class="sbtn pri" id="addR" style="width:100%;padding:13px;margin-top:14px">＋ 新增餐廳</button>`;
     body.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editRestaurant(b.getAttribute('data-edit'),draw));
     body.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{const r=findRest(b.getAttribute('data-del'));askConfirm('刪除餐廳「'+r.name+'」？',()=>{state.restaurants=state.restaurants.filter(x=>x.id!==r.id);save();draw();});});
-    $('#addR').onclick=()=>{const r={id:uid(),name:'新餐廳',phone:'',address:'',open:'11:00',close:'20:00',minOrder:{type:'amount',value:0},note:'',menu:[]};state.restaurants.push(r);reindexAll();save();editRestaurant(r.id,draw);};
+    $('#addR').onclick=()=>{const r={id:uid(),name:'新餐廳',phone:'',address:'',open:'11:00',close:'20:00',openDays:ALL_DAYS.slice(),minOrder:{type:'amount',value:0},note:'',menu:[]};state.restaurants.push(r);reindexAll();save();editRestaurant(r.id,draw);};
   };draw();
 }
 function editRestaurant(rid,after){const r=findRest(rid);const{body,footer,close}=sheet('編輯餐廳',after,true);
@@ -855,6 +867,8 @@ function editRestaurant(rid,after){const r=findRest(rid);const{body,footer,close
     <div class="lbl2">地址</div><input class="fi" data-f="address" value="${esc(r.address||'')}">
     <div class="fi-row"><div style="flex:1"><div class="lbl2">開始營業</div><input class="fi" data-f="open" value="${esc(r.open)}" placeholder="11:00"></div>
       <div style="flex:1"><div class="lbl2">結束營業</div><input class="fi" data-f="close" value="${esc(r.close)}" placeholder="20:00"></div></div>
+    <div class="lbl2">營業日（點選切換）</div>
+    <div class="day-row">${[1,2,3,4,5,6,0].map(d=>`<button class="opt-b day-b ${normDays(r.openDays).includes(d)?'on':''}" data-day="${d}">${DAY_LABEL[d]}</button>`).join('')}</div>
     <div class="lbl2">營業時間備註（可空）</div><input class="fi" data-f="hoursNote" value="${esc(r.hoursNote||'')}">
     <div class="lbl2">外送門檻</div>
     <div class="fi-row"><select class="fi" data-f="motype" style="flex:1"><option value="amount" ${r.minOrder.type==='amount'?'selected':''}>金額（元）</option><option value="count" ${r.minOrder.type==='count'?'selected':''}>數量</option></select>
@@ -871,6 +885,9 @@ function editRestaurant(rid,after){const r=findRest(rid);const{body,footer,close
         <button class="mini-del" data-delit="${ci}|${ii}">✕</button></div>`).join('')}
       <button class="sbtn" data-additem="${ci}" style="width:100%;margin-top:8px;padding:9px">＋ 品項</button></div>`).join('')}
     <button class="sbtn" id="addcat" style="width:100%;padding:11px">＋ 新增分類</button>`;
+    body.querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{const d=+b.getAttribute('data-day');let days=normDays(r.openDays);
+      if(days.includes(d)){if(days.length===1){toast('至少要保留一天營業');return;}days=days.filter(x=>x!==d);}else days.push(d);
+      r.openDays=normDays(days);save();draw();});
     body.querySelectorAll('[data-f]').forEach(el=>el.onchange=()=>{const f=el.getAttribute('data-f');
       if(f==='motype'){r.minOrder.type=el.value;if(el.value==='count'&&!r.minOrder.unit)r.minOrder.unit='份';reindexAll();save();draw();return;}
       if(f==='moval'){r.minOrder.value=+el.value||0;}
@@ -982,7 +999,7 @@ if(window.visualViewport)window.visualViewport.addEventListener('resize',()=>{if
 /* 登入畫面 */
 function showLogin(msg){hideBottom();document.querySelectorAll('.overlay').forEach(x=>x.remove());setSyncUI('','');
   $('#app').innerHTML=`<div class="boot"><div class="login-card">
-    <div class="t"><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--primary);margin-right:8px;vertical-align:middle"></span>病房訂餐</div>
+    <div class="t"><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--primary);margin-right:8px;vertical-align:middle"></span>MICU3 訂餐</div>
     <div class="s">請使用已授權的 Google 帳號登入</div>
     ${msg?`<div class="err" id="loginMsg">${esc(msg)}</div>`:''}
     <a class="gbtn" id="bLogin" href="${esc(googleURL())}"><span class="g">G</span>使用 Google 登入</a></div></div>`;}
