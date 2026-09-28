@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https://stxextvimtstwsugvjbu.supabase.co; img-src 'self' data:; font-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
 <title>病房訂餐</title>
 <style>
 :root{
@@ -310,6 +312,7 @@ body.kb-open .sheet-bd{padding-bottom:45vh}
 
 <script>
 "use strict";
+if(window.top!==window.self){try{window.top.location=window.self.location.href;}catch(e){document.documentElement.innerHTML="";throw new Error("framed");}}
 /* ============================================================ Supabase 設定 ============================================================
    名單、餐廳、訂單全部存在 Supabase（ward-order 專案），本檔不含任何資料。
    需 Google 登入；RLS 只允許 public.allowed_users 名單內的 email 讀寫（名單只在資料庫，不在本檔）。 */
@@ -374,24 +377,31 @@ async function sbFetch(path,opt,retried){opt=opt||{};
   return txt?JSON.parse(txt):null;}
 
 /* --- 前端物件 <-> 資料表列 --- */
+/* 資料庫讀進來的 id 會放進 HTML 屬性，只保留安全字元（資料庫端也有 CHECK 約束） */
+const safeId=x=>String(x==null?'':x).replace(/[^A-Za-z0-9_-]/g,'').slice(0,64);
+const safeMap=(m,f)=>{const out={};for(const k in (m||{}))out[safeId(k)]=f?f(m[k]):m[k];return out;};
 const toISO=ms=>ms?new Date(ms).toISOString():null;
 const toMs=iso=>iso?Date.parse(iso):undefined;
 const todayISO=()=>{const t=new Date();return new Date(t.getTime()-t.getTimezoneOffset()*60000).toISOString().slice(0,10);};
 const TABLES={
   staff:{list:()=>state.roster,
     toRow:(p,i)=>({id:p.id,name:p.name,bring_own:!!p.bringOwn,favorites:p.favorites||[],sort:i+1}),
-    fromRow:r=>({id:r.id,name:r.name,bringOwn:!!r.bring_own,favorites:r.favorites||[]})},
+    fromRow:r=>({id:safeId(r.id),name:String(r.name||''),bringOwn:!!r.bring_own,favorites:(r.favorites||[]).map(safeId)})},
   restaurants:{list:()=>state.restaurants,
     toRow:(r,i)=>({id:r.id,name:r.name,phone:r.phone||'',address:r.address||'',open_time:r.open,close_time:r.close,
       hours_note:r.hoursNote||null,min_order:r.minOrder,note:r.note||'',menu:r.menu,sort:i+1}),
-    fromRow:r=>{const o={id:r.id,name:r.name,phone:r.phone||'',address:r.address||'',open:r.open_time,close:r.close_time,
+    fromRow:r=>{const o={id:safeId(r.id),name:String(r.name||''),phone:r.phone||'',address:r.address||'',open:r.open_time,close:r.close_time,
       minOrder:r.min_order||{type:'amount',value:0},note:r.note||'',menu:r.menu||[]};if(r.hours_note)o.hoursNote=r.hours_note;return o;}},
   orders:{list:()=>state.orders,
     toRow:o=>({id:o.id,status:o.status,archived_at:toISO(o.archivedAt),meal:o.meal||null,order_date:o.date||todayISO(),
       restaurant_id:o.restaurantId||null,step:o.step,reached:o.reached||[],participants:o.participants||[],items:o.items||{},pay:o.pay||{},
       created_at:toISO(o.createdAt)||new Date().toISOString()}),
-    fromRow:r=>{const o={id:r.id,status:r.status,createdAt:toMs(r.created_at),step:r.step||'meal',meal:r.meal||null,date:r.order_date,
-      restaurantId:r.restaurant_id||null,participants:r.participants||[],items:r.items||{},pay:r.pay||{},reached:r.reached||['meal']};
+    fromRow:r=>{const o={id:safeId(r.id),status:r.status==='archived'?'archived':'active',createdAt:toMs(r.created_at),step:STEPS.some(x=>x[0]===r.step)?r.step:'meal',
+      meal:r.meal==='lunch'||r.meal==='dinner'?r.meal:null,date:/^\d{4}-\d\d-\d\d$/.test(r.order_date||'')?r.order_date:todayISO(),
+      restaurantId:r.restaurant_id?safeId(r.restaurant_id):null,
+      participants:(r.participants||[]).map(p=>Object.assign({},p,{id:safeId(p.id),favorites:(p.favorites||[]).map(safeId)})),
+      items:safeMap(r.items,arr=>(arr||[]).map(l=>Object.assign({},l,{uid:safeId(l.uid),itemId:safeId(l.itemId),qty:+l.qty||1,total:+l.total||0}))),
+      pay:safeMap(r.pay),reached:(r.reached||['meal']).filter(k=>STEPS.some(x=>x[0]===k))};
       if(r.archived_at)o.archivedAt=toMs(r.archived_at);return o;}}
 };
 
@@ -421,7 +431,7 @@ async function flush(){
     sync.failing=false;setSyncUI('','');
   }catch(e){console.error('[sync]',e);
     if(e.auth){sync.busy=false;signOut('登入已失效，請重新登入（最後幾筆變更可能未儲存）');return;}
-    if(!sync.failing)toast('雲端儲存失敗，稍後自動重試');
+    if(!sync.failing)toast(/HTTP 4\d\d/.test(e.message)?'有資料格式不正確，無法儲存':'雲端儲存失敗，稍後自動重試');
     sync.failing=true;setSyncUI('error','未儲存 · 重試中');
     clearTimeout(sync.timer);sync.timer=setTimeout(flush,5000);
   }finally{sync.busy=false;if(sync.again){sync.again=false;save();}}
@@ -433,7 +443,7 @@ async function loadAll(){
     sbFetch('restaurants?select=*&order=sort.asc,created_at.asc'),sbFetch('orders?select=*&order=created_at.desc')]);
   state.roster=s.map(TABLES.staff.fromRow);state.restaurants=r.map(TABLES.restaurants.fromRow);state.orders=o.map(TABLES.orders.fromRow);
 }
-function reindexAll(){state.restaurants.forEach(r=>{r._index={};r.menu.forEach((c,ci)=>c.items.forEach((it,ii)=>{if(!it.id)it.id=r.id+'_'+ci+'_'+ii;r._index[it.id]=it;}));});}
+function reindexAll(){state.restaurants.forEach(r=>{r._index={};r.menu.forEach((c,ci)=>c.items.forEach((it,ii)=>{it.id=safeId(it.id)||(r.id+'_'+ci+'_'+ii);(it.groups||[]).forEach(g=>{g.id=safeId(g.id)||('g'+ci+'_'+ii);});r._index[it.id]=it;}));});}
 const findRest=id=>state.restaurants.find(r=>r.id===id);
 
 function newOrder(){
@@ -451,7 +461,7 @@ const mealTime=m=>m==='lunch'?'12:00':'19:00';
 const mealLabel=m=>m==='lunch'?'中餐':'晚餐';
 const dateText=o=>(o.date||'').replace(/-/g,'/');
 const orderTitle=o=>dateText(o)+'　'+(o.meal?mealLabel(o.meal):'未選餐別');
-const orderTitleHTML=o=>`<span class="tnum">${dateText(o)}</span><span>${o.meal?mealLabel(o.meal):'未選餐別'}</span>`;
+const orderTitleHTML=o=>`<span class="tnum">${esc(dateText(o))}</span><span>${o.meal?mealLabel(o.meal):'未選餐別'}</span>`;
 
 function priceOf(item,sel){let unit=item.p||0,add=0;
   (item.groups||[]).forEach(g=>{if(g.type==='single'){const ci=sel.single[g.id];if(ci!=null&&g.choices[ci])unit+=g.choices[ci].p;}
@@ -475,7 +485,7 @@ const payers=o=>{o=o||getEditing();return activeParts(o).filter(p=>subtotal(p.id
 function fullyPaid(o){const ps=payers(o);return ps.length>0&&ps.every(p=>o.pay[p.id]&&o.pay[p.id].settled);}
 function minStatus(o){o=o||getEditing();const r=findRest(o.restaurantId);if(!r)return null;const mo=r.minOrder;
   if(mo.type==='amount'){const cur=grandTotal(o);return{cur,met:cur>=mo.value,curText:fmt(cur),goalText:fmt(mo.value),pct:Math.min(100,mo.value?cur/mo.value*100:100)};}
-  const cur=potCount(o);return{cur,met:cur>=mo.value,curText:cur+' '+mo.unit,goalText:mo.value+' '+mo.unit,pct:Math.min(100,mo.value?cur/mo.value*100:100)};}
+  const cur=potCount(o);return{cur,met:cur>=mo.value,curText:cur+' '+(mo.unit||''),goalText:mo.value+' '+(mo.unit||''),pct:Math.min(100,mo.value?cur/mo.value*100:100)};}
 
 /* ============================================================ 導覽 ============================================================ */
 const STEPS=[['meal','訂單'],['people','同仁'],['restaurant','餐廳'],['order','點餐'],['summary','清單'],['money','收款']];
@@ -593,7 +603,7 @@ function viewArchived(o){const{body}=sheet('訂單明細 · '+orderTitle(o),null
 /* ---------- 步驟1 餐別 ---------- */
 function renderMeal(w){const o=getEditing();
   w.innerHTML=`<div class="h1">新增訂單</div>
-    <div class="field"><label>訂餐日期</label><input type="date" id="dt" value="${o.date}"></div>
+    <div class="field"><label>訂餐日期</label><input type="date" id="dt" value="${esc(o.date)}"></div>
     <div class="field"><label>餐別</label><div class="meal-grid">
       <button class="meal ${o.meal==='lunch'?'sel':''}" data-m="lunch"><div class="emo">☀︎</div><div class="t">中餐</div><div class="tm">用 12:00 篩選營業中</div></button>
       <button class="meal ${o.meal==='dinner'?'sel':''}" data-m="dinner"><div class="emo">☾︎</div><div class="t">晚餐</div><div class="tm">用 19:00 篩選營業中</div></button>
@@ -633,7 +643,7 @@ function openRoster(onClose){
   const draw=()=>{const rname=id=>{const r=findRest(id);return r?r.name:null;};
     body.innerHTML=state.roster.map(p=>{const favs=p.favorites.filter(id=>rname(id));const rest=state.restaurants.filter(r=>!p.favorites.includes(r.id));
       return `<div class="card rs-card">
-      <div class="rs-top"><input class="rs-name" value="${esc(p.name)}" data-rn="${p.id}">
+      <div class="rs-top"><input class="rs-name" value="${esc(p.name)}" data-rn="${p.id}" maxlength="40">
         <label class="rs-no ${p.bringOwn?'on':''}" data-bo="${p.id}"><span class="chk">${p.bringOwn?'✓':''}</span>不訂餐</label>
         <button class="mini-del" data-del="${p.id}" aria-label="移除">✕</button></div>
       <div class="rs-favs">${favs.map(id=>`<button class="fav-chip" data-favrm="${p.id}|${id}">♥ ${esc(rname(id))} ✕</button>`).join('')}
@@ -649,7 +659,7 @@ function openRoster(onClose){
       state.orders.forEach(o=>{const op=o.participants.find(x=>x.id===p.id);if(op)op.name=p.name;});save();});
     body.querySelectorAll('[data-bo]').forEach(el=>el.onclick=()=>{const p=state.roster.find(x=>x.id===el.getAttribute('data-bo'));p.bringOwn=!p.bringOwn;save();draw();});
     body.querySelectorAll('[data-del]').forEach(el=>el.onclick=()=>{const id=el.getAttribute('data-del');askConfirm('從母名單移除這位同仁？',()=>{state.roster=state.roster.filter(x=>x.id!==id);save();draw();});});
-    $('#addP').onclick=()=>askPrompt('新同仁姓名：',(n)=>{state.roster.push({id:uid(),name:n,bringOwn:false,favorites:[]});save();draw();},{placeholder:'輸入姓名'});
+    $('#addP').onclick=()=>askPrompt('新同仁姓名：',(n)=>{state.roster.push({id:uid(),name:n.slice(0,40),bringOwn:false,favorites:[]});save();draw();},{placeholder:'輸入姓名'});
   };draw();
 }
 
@@ -660,11 +670,11 @@ function renderRestaurant(w){const o=getEditing(),t=mealTime(o.meal);
   open.sort((a,b)=>(b.id===o.restaurantId)-(a.id===o.restaurantId)||favCount(b)-favCount(a));  // 已選的店排最前
   const norm=x=>(x||'').toLowerCase().replace(/[\s（）()・·\-]/g,'');
   const hit=(r,q)=>!q||norm(r.name).includes(q)||norm(r.address).includes(q)||norm(r.phone).includes(q);
-  const card=r=>{const fc=favCount(r);const mo=r.minOrder.type==='amount'?`滿 ${fmt(r.minOrder.value)}`:`${r.minOrder.value} ${r.minOrder.unit}以上`;
+  const card=r=>{const fc=favCount(r);const mo=r.minOrder.type==='amount'?`滿 ${fmt(r.minOrder.value)}`:`${esc(r.minOrder.value)} ${esc(r.minOrder.unit||'')}以上`;
       const sel=o.restaurantId===r.id;
       return `<button class="r-card ${sel?'sel':''}" data-r="${r.id}">${fc?`<span class="favpill">♥ ${fc} 位喜愛</span>`:''}
         <div class="rn">${esc(r.name)}${sel?'<span class="r-sel">✓ 目前選擇</span>':''}</div>
-        <div class="meta">營業 ${r.open}–${r.close}${r.hoursNote?` <span style="color:var(--warn)">・${esc(r.hoursNote)}</span>`:''}<br>
+        <div class="meta">營業 ${esc(r.open)}–${esc(r.close)}${r.hoursNote?` <span style="color:var(--warn)">・${esc(r.hoursNote)}</span>`:''}<br>
         外送門檻 <b>${mo}</b> · 電話 ${esc(r.phone)}</div></button>`;};
   w.innerHTML=`<div class="h1">選擇餐廳</div>
     <div class="searchbar"><input id="rq" type="search" placeholder="搜尋餐廳名稱、地址或電話…" value="${esc(state.ui.restQuery||'')}" autocomplete="off" enterkeyhint="search"></div>
@@ -685,7 +695,7 @@ function renderRestaurant(w){const o=getEditing(),t=mealTime(o.meal);
 function renderOrder(w){const o=getEditing(),r=findRest(o.restaurantId),ms=minStatus(o);
   w.innerHTML=`<div class="h1">開始點餐</div>
     <div class="mini-r"><div><div class="rn">${esc(r.name)}</div><div class="ph">電話 ${esc(r.phone)}</div></div><button class="chg" id="chgR">換餐廳</button></div>
-    <div class="meter ${ms.met?'met':''}"><div class="top"><span>外送低消進度</span><span class="muted tnum">${ms.curText} / ${ms.goalText}</span></div>
+    <div class="meter ${ms.met?'met':''}"><div class="top"><span>外送低消進度</span><span class="muted tnum">${esc(ms.curText)} / ${esc(ms.goalText)}</span></div>
       <div class="bar"><span style="width:${ms.pct}%"></span></div><div class="status">${ms.met?'✓ 已達外送門檻':'還沒到外送門檻，再湊一點'}</div></div>
     <button class="addpeople" id="addPpl">＋ 新增 / 管理訂餐同仁（目前 ${o.participants.length} 人）</button>
     ${o.participants.map(p=>{const items=o.items[p.id]||[],st=subtotal(p.id,o),roster=state.roster.find(x=>x.id===p.id);
@@ -774,7 +784,7 @@ function aggregate(o){o=o||getEditing();const map={};
     if(!map[key])map[key]={name:l.name,opt:l.opt,note:l.note,qty:0,total:0};map[key].qty+=l.qty;map[key].total+=l.total;}));return Object.values(map);}
 function renderSummary(w){const o=getEditing(),r=findRest(o.restaurantId),view=state.ui.summaryView,ms=minStatus(o);
   const storeView=()=>`<div class="list"><div class="store-head"><div class="rn">${esc(r.name)}</div><div class="ph tnum">電話 ${esc(r.phone)}</div>
-    <div style="margin-top:6px;font-size:var(--fs-s);font-weight:700;color:${ms.met?'var(--good)':'var(--warn)'}">${ms.met?'✓ ':'△ '}外送門檻 ${ms.curText} / ${ms.goalText}</div></div>
+    <div style="margin-top:6px;font-size:var(--fs-s);font-weight:700;color:${ms.met?'var(--good)':'var(--warn)'}">${ms.met?'✓ ':'△ '}外送門檻 ${esc(ms.curText)} / ${esc(ms.goalText)}</div></div>
     ${aggregate(o).map(a=>`<div class="agg"><div class="qty tnum">${a.qty}×</div><div class="an">${esc(a.name)}${a.opt?`<div class="opt">${esc(a.opt)}</div>`:''}${a.note?`<div class="opt" style="color:var(--warn)">備註 ${esc(a.note)}</div>`:''}</div>
     <div class="tnum" style="font-weight:700">${fmt(a.total)}</div></div>`).join('')}
     <div class="grand"><span>合計</span><span class="tnum">${fmt(grandTotal(o))}</span></div></div><button class="copybtn" id="copy">複製給店家的下單文字</button>`;
@@ -789,7 +799,7 @@ function renderSummary(w){const o=getEditing(),r=findRest(o.restaurantId),view=s
   bottomBar({l1:'合計 · '+orderedCount(o)+' 人',l2:fmt(grandTotal(o)),btn:'下一步：收款',onClick:()=>goStep('money')});
 }
 function storeText(o){const r=findRest(o.restaurantId),ms=minStatus(o);let s=`【${r.name} 外送訂單】\n電話 ${r.phone}\n日期：${orderTitle(o)}\n—\n`;
-  aggregate(o).forEach(a=>s+=`${a.qty}× ${a.name}${a.opt||''}${a.note?'（'+a.note+'）':''}\n`);s+=`—\n合計 ${fmt(grandTotal(o))}（外送門檻 ${ms.curText}/${ms.goalText}）`;return s;}
+  aggregate(o).forEach(a=>s+=`${a.qty}× ${a.name}${a.opt||''}${a.note?'（'+a.note+'）':''}\n`);s+=`—\n合計 ${fmt(grandTotal(o))}（外送門檻 ${esc(ms.curText)}/${esc(ms.goalText)}）`;return s;}
 function personText(o){let s=`【分菜清單 · ${orderTitle(o)}】\n`;activeParts(o).forEach(p=>{const arr=o.items[p.id]||[];if(!arr.length)return;
   s+=`\n${p.name}（${fmt(subtotal(p.id,o))}）\n`;arr.forEach(l=>s+=`　${l.qty}× ${l.name}${l.opt||''}${l.note?'（'+l.note+'）':''}\n`);});s+=`\n總計 ${fmt(grandTotal(o))}`;return s;}
 
@@ -830,7 +840,7 @@ function updateMoneyRow(id,o){o=o||getEditing();
 /* ============================================================ 餐廳後台 ============================================================ */
 function openAdmin(){const{body,close}=sheet('餐廳後台',null);
   const draw=()=>{if(!document.body.contains(body))return;body.innerHTML=`<p class="sub">修改或新增餐廳與菜單。資料存在雲端資料庫，變更會自動儲存。</p>
-    ${state.restaurants.map(r=>`<div class="adm-r"><div class="an">${esc(r.name)}<div class="ac">${r.menu.reduce((s,c)=>s+c.items.length,0)} 項 · ${r.open}–${r.close}</div></div>
+    ${state.restaurants.map(r=>`<div class="adm-r"><div class="an">${esc(r.name)}<div class="ac">${r.menu.reduce((s,c)=>s+c.items.length,0)} 項 · ${esc(r.open)}–${esc(r.close)}</div></div>
       <button class="sbtn" data-edit="${r.id}">編輯</button><button class="mini-del" data-del="${r.id}">✕</button></div>`).join('')||'<div class="empty">尚無餐廳</div>'}
     <button class="sbtn pri" id="addR" style="width:100%;padding:13px;margin-top:14px">＋ 新增餐廳</button>`;
     body.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editRestaurant(b.getAttribute('data-edit'),draw));
@@ -840,7 +850,7 @@ function openAdmin(){const{body,close}=sheet('餐廳後台',null);
 }
 function editRestaurant(rid,after){const r=findRest(rid);const{body,footer,close}=sheet('編輯餐廳',after,true);
   const draw=()=>{if(!document.body.contains(body))return;body.innerHTML=`
-    <div class="lbl2">店名</div><input class="fi" data-f="name" value="${esc(r.name)}">
+    <div class="lbl2">店名</div><input class="fi" data-f="name" value="${esc(r.name)}" maxlength="80">
     <div class="fi-row"><div style="flex:1"><div class="lbl2">電話</div><input class="fi" data-f="phone" value="${esc(r.phone)}"></div></div>
     <div class="lbl2">地址</div><input class="fi" data-f="address" value="${esc(r.address||'')}">
     <div class="fi-row"><div style="flex:1"><div class="lbl2">開始營業</div><input class="fi" data-f="open" value="${esc(r.open)}" placeholder="11:00"></div>
@@ -865,6 +875,9 @@ function editRestaurant(rid,after){const r=findRest(rid);const{body,footer,close
       if(f==='motype'){r.minOrder.type=el.value;if(el.value==='count'&&!r.minOrder.unit)r.minOrder.unit='份';reindexAll();save();draw();return;}
       if(f==='moval'){r.minOrder.value=+el.value||0;}
       else if(f==='mounit'){r.minOrder.unit=el.value;}
+      else if(f==='open'||f==='close'){const v=el.value.trim().replace('：',':');
+        if(!/^\d{1,2}:\d{2}$/.test(v)){toast('營業時間格式為 HH:MM，例如 11:00');el.value=r[f];return;}r[f]=v;}
+      else if(f==='name'){const v=el.value.trim().slice(0,80);if(!v){el.value=r.name;return;}r.name=v;}
       else r[f]=el.value;save();});
     body.querySelectorAll('[data-cat]').forEach(el=>el.onchange=()=>{r.menu[+el.getAttribute('data-cat')].cat=el.value;save();});
     body.querySelectorAll('[data-in]').forEach(el=>el.onchange=()=>{const[ci,ii]=el.getAttribute('data-in').split('|');r.menu[ci].items[ii].n=el.value;save();});
